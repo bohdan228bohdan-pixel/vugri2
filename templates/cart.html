@@ -1,70 +1,178 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block head_extra %}
+<style>
+/* Cart page styles — adapted to site dark theme */
+.cart-container {
+  padding: 36px 12px;
+  color: var(--white, #fff);
+  min-height: 60vh;
+}
+
+.cart-hero {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  margin-bottom:18px;
+  flex-wrap:wrap;
+}
+.cart-hero h1 { margin:0; font-size:2rem; letter-spacing: -0.5px; }
+
+.cart-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius:12px;
+  padding:18px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+
+.cart-row {
+  display:flex;
+  gap:16px;
+  align-items:center;
+  padding:12px 8px;
+  border-bottom:1px dashed rgba(255,255,255,0.03);
+}
+.cart-row:last-child { border-bottom:0; }
+
+.cart-thumb {
+  width:96px;
+  height:96px;
+  object-fit:cover;
+  border-radius:8px;
+  flex:0 0 96px;
+  border:1px solid rgba(255,255,255,0.03);
+  background:#0b0b0b;
+}
+
+.cart-item-info { flex:1; min-width:0; }
+.cart-item-info .title { font-weight:800; font-size:1.05rem; color:var(--white,#fff) }
+.cart-item-info .meta { color:var(--muted,#9aa0a6); margin-top:6px; font-size:0.95rem }
+
+.cart-qty-wrap {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  justify-content:flex-end;
+  min-width:220px;
+}
+
+.qty-button {
+  width:40px; height:40px; border-radius:8px;
+  border:1px solid rgba(255,255,255,0.06);
+  background:transparent; color:var(--white,#fff);
+  font-size:1.05rem; cursor:pointer;
+}
+.qty-input {
+  width:72px; text-align:center; padding:8px; border-radius:8px;
+  background: rgba(255,255,255,0.02); color:var(--white,#fff); border:1px solid rgba(255,255,255,0.04);
+}
+
+.item-price { font-weight:900; color:var(--white,#fff); margin-top:8px; text-align:right; }
+
+.cart-footer {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding-top:16px; margin-top:12px; border-top:1px solid rgba(255,255,255,0.03);
+  flex-wrap:wrap;
+}
+
+.btn-primary-outline {
+  padding:10px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);
+  background:transparent; color:var(--white,#fff); text-decoration:none;
+}
+.btn-clear { color:#ff6b6b; background:transparent; border:0; padding:0 6px; font-weight:700; }
+
+.btn-action {
+  padding:10px 18px; border-radius:10px; font-weight:800; border:none;
+  background: linear-gradient(90deg,#e74c3c,#ff6b57); color:#fff;
+  box-shadow: 0 8px 20px rgba(231,76,60,0.12);
+  text-decoration:none;
+}
+
+/* Recommended grid */
+.rec-grid { display:flex; gap:12px; overflow:auto; padding-top:12px; margin-top:12px }
+.rec-card {
+  min-width:150px; max-width:160px; background:rgba(255,255,255,0.02); border-radius:8px; padding:10px; text-align:center;
+}
+.rec-card img { width:100%; height:96px; object-fit:cover; border-radius:6px }
+.rec-card .name { color:var(--white,#fff); font-weight:700; margin-top:8px; font-size:0.95rem }
+.rec-card .price { color:var(--muted,#9aa0a6); margin-top:6px; }
+
+/* Responsive */
+@media (max-width:900px) {
+  .cart-row { flex-direction:column; align-items:flex-start; gap:12px; }
+  .cart-qty-wrap { width:100%; justify-content:flex-start; }
+  .cart-footer { flex-direction:column; align-items:stretch; gap:8px; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-  <h1 class="mb-4">Кошик</h1>
+<div class="container cart-container">
+  <div class="cart-hero">
+    <h1>Кошик</h1>
+    <div style="color:var(--muted,#9aa0a6);font-weight:700">
+      {{ cart_count|default:"0" }} товар(ів)
+    </div>
+  </div>
 
   {% if cart %}
-    <div class="card mb-3" style="background:transparent;border:0;">
-      <div class="card-body" style="padding:0;">
-        {% for pid, item in cart.items %}
-          <div class="d-flex align-items-center mb-3" data-pid="{{ pid }}" style="border-bottom:1px solid rgba(255,255,255,0.04);padding:12px 0;">
-            {% if item.image %}
-              <img src="{{ item.image }}" alt="{{ item.name }}" style="width:84px;height:84px;object-fit:cover;border-radius:8px;margin-right:16px;">
-            {% endif %}
-            <div style="flex:1">
-              <div style="font-weight:700;color:var(--white)">{{ item.name }}</div>
-              <div style="color:var(--muted);font-size:0.95rem;margin-top:6px;">{{ item.price }} {{ item.currency }} / 100г</div>
-            </div>
+    <div class="cart-card">
+      {% for pid, item in cart.items %}
+        <div class="cart-row" data-pid="{{ pid }}">
+          {% if item.image %}
+            <img src="{{ item.image }}" alt="{{ item.name }}" class="cart-thumb">
+          {% endif %}
 
-            <div style="text-align:right;min-width:260px">
-              <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
-                <button class="btn btn-outline-secondary qty-decr" aria-label="minus" style="width:40px;height:40px;border-radius:6px">−</button>
-                <input class="cart-qty" type="number" min="1" value="{{ item.quantity }}" style="width:72px;text-align:center;border-radius:6px;padding:6px;background:rgba(255,255,255,0.03);color:var(--white);border:1px solid rgba(255,255,255,0.04)" step="1">
-                <button class="btn btn-outline-secondary qty-incr" aria-label="plus" style="width:40px;height:40px;border-radius:6px">+</button>
-              </div>
-              <div style="font-weight:800;margin-top:8px;color:var(--white);font-size:1rem;">
-                {{ item.price|add:"0" }} {{ item.currency }}
-              </div>
-            </div>
-          </div>
-        {% endfor %}
-
-        <div style="margin-top:18px;border-top:1px solid rgba(255,255,255,0.04);padding-top:18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-          <div style="display:flex;gap:12px;align-items:center">
-            <a href="{% url 'products' %}" class="btn btn-outline-light">← Продовжити покупки</a>
-            <a href="{% url 'clear_cart' %}" class="btn btn-link text-danger" style="padding-left:0;padding-right:0">Очистити кошик</a>
+          <div class="cart-item-info">
+            <div class="title">{{ item.name }}</div>
+            <div class="meta">{{ item.price }} {{ item.currency }} / 100г</div>
           </div>
 
-          <div style="font-weight:900;color:var(--white)">
-            {% for cur, total in totals.items %}
-              <div>{{ total }} {{ cur }}</div>
-            {% endfor %}
+          <div class="cart-qty-wrap">
+            <button class="qty-button qty-decr" aria-label="decrease">−</button>
+            <input class="qty-input cart-qty" type="number" min="1" value="{{ item.quantity }}" step="1" />
+            <button class="qty-button qty-incr" aria-label="increase">+</button>
+            <div class="item-price">{{ item.price|add:"0" }} {{ item.currency }}</div>
           </div>
+        </div>
+      {% endfor %}
 
-          <div>
-            {% if first_pid %}
-              <a id="checkoutLink" href="{% url 'order_form' first_pid %}" class="btn btn-danger">Оформити замовлення</a>
-            {% else %}
-              <button class="btn btn-danger" disabled>Оформити замовлення</button>
-            {% endif %}
-          </div>
+      <div class="cart-footer">
+        <div style="display:flex;gap:12px;align-items:center">
+          <a href="{% url 'products' %}" class="btn-primary-outline">← Пр��довжити покупки</a>
+          <a href="{% url 'clear_cart' %}" class="btn-clear">Очистити кошик</a>
+        </div>
+
+        <div style="font-weight:900;color:var(--white,#fff);font-size:1.1rem;">
+          {% for cur, total in totals.items %}
+            <div>{{ total }} {{ cur }}</div>
+          {% endfor %}
+        </div>
+
+        <div>
+          {% if first_pid %}
+            <a id="checkoutLink" href="{% url 'order_form' first_pid %}" class="btn-action">Оформити замовлення</a>
+          {% else %}
+            <button class="btn-action" disabled>Оформити замовлення</button>
+          {% endif %}
         </div>
       </div>
     </div>
 
-    <div class="recommended" style="margin-top:28px">
-      <h3 style="margin-top:6px;color:var(--white)">Рекомендуємо придбати</h3>
-      <div class="rec-grid" style="display:flex;gap:12px;overflow:auto;padding-top:12px">
+    <div class="recommended">
+      <h3 style="margin-top:18px;color:var(--white)">Рекомендуємо придбати</h3>
+      <div class="rec-grid">
         {% for p in products %}
-          <div class="rec-card" style="min-width:150px;padding:8px;background:rgba(255,255,255,0.02);border-radius:8px;text-align:center;">
+          <div class="rec-card">
             {% if p.image %}
-              <img src="{{ p.image.url }}" alt="{{ p.name }}" style="width:100%;height:96px;object-fit:cover;border-radius:6px">
+              <img src="{{ p.image.url }}" alt="{{ p.name }}">
             {% endif %}
-            <div style="font-weight:700; margin-top:8px;color:var(--white)">{{ p.name }}</div>
-            <div style="color:var(--muted)">{{ p.price_per_100g }} грн</div>
-            <button class="btn rec-add" data-id="{{ p.id }}" data-price="{{ p.price_per_100g }}" style="margin-top:8px;background:var(--accent-red);color:#fff;border:none;padding:6px 8px;border-radius:6px;font-weight:700">До кошика</button>
+            <div class="name">{{ p.name }}</div>
+            <div class="price">{{ p.price_per_100g }} грн</div>
+            <button class="btn-action" style="margin-top:8px;background:linear-gradient(90deg,#ff6b57,#ff3b3b);padding:8px 10px;font-size:0.9rem" data-id="{{ p.id }}" data-price="{{ p.price_per_100g }}">До кошика</button>
           </div>
         {% empty %}
           <div style="color:var(--muted)">Немає рекомендацій на цей момент</div>
@@ -81,6 +189,7 @@
 {% block scripts %}
 <script>
 (function(){
+  // CSRF helper
   function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -97,38 +206,33 @@
   }
   const csrftoken = getCookie('csrftoken');
 
-  // Helpers
-  function findContainer(btn) {
-    return btn.closest('[data-pid]');
+  // Utility to get container and PID
+  function containerFor(el){
+    return el.closest('[data-pid]');
   }
 
-  // Increment
-  document.querySelectorAll('.qty-incr').forEach(btn => btn.addEventListener('click', () => {
-    const container = findContainer(btn);
-    const inp = container.querySelector('.cart-qty');
+  // Increment / Decrement / change handlers
+  document.querySelectorAll('.qty-incr').forEach(btn => btn.addEventListener('click', async () => {
+    const c = containerFor(btn); if(!c) return;
+    const inp = c.querySelector('.cart-qty');
     inp.value = Math.max(1, parseInt(inp.value||1) + 1);
-    updateItem(container.dataset.pid, inp.value);
+    await updateItem(c.dataset.pid, inp.value);
   }));
 
-  // Decrement
-  document.querySelectorAll('.qty-decr').forEach(btn => btn.addEventListener('click', () => {
-    const container = findContainer(btn);
-    const inp = container.querySelector('.cart-qty');
+  document.querySelectorAll('.qty-decr').forEach(btn => btn.addEventListener('click', async () => {
+    const c = containerFor(btn); if(!c) return;
+    const inp = c.querySelector('.cart-qty');
     inp.value = Math.max(1, parseInt(inp.value||1) - 1);
-    updateItem(container.dataset.pid, inp.value);
+    await updateItem(c.dataset.pid, inp.value);
   }));
 
-  // Manual change
-  document.querySelectorAll('.cart-qty').forEach(inp => {
-    inp.addEventListener('change', (e) => {
-      const v = Math.max(1, parseInt(e.target.value||1));
-      e.target.value = v;
-      const pid = e.target.closest('[data-pid]').dataset.pid;
-      updateItem(pid, v);
-    });
-  });
+  document.querySelectorAll('.cart-qty').forEach(inp => inp.addEventListener('change', async (e) => {
+    const v = Math.max(1, parseInt(e.target.value||1));
+    e.target.value = v;
+    const pid = containerFor(e.target).dataset.pid;
+    await updateItem(pid, v);
+  }));
 
-  // Update cart item (POST to server)
   async function updateItem(product_id, quantity){
     const data = new FormData();
     data.append('product_id', product_id);
@@ -140,44 +244,36 @@
     });
     const json = await res.json();
     if (!json.ok) {
-      alert(json.error || 'Помилка оновлення');
+      alert(json.error || 'Помилка оновлення кошика');
       return;
     }
-    // simple reload to update totals & header count
     location.reload();
   }
 
-  // Recommended items: add to cart with quantity=1
-  document.querySelectorAll('.rec-add').forEach(b => {
-    b.addEventListener('click', async () => {
-      const id = b.dataset.id;
-      const price = b.dataset.price || 0;
-      const data = new FormData();
-      data.append('product_id', id);
-      data.append('name', b.closest('.rec-card').querySelector('div')?.innerText || 'Товар');
-      data.append('price', Math.round(parseFloat(price || 0)));
-      data.append('currency', 'UAH');
-      data.append('quantity', 1);
-      data.append('image', b.closest('.rec-card').querySelector('img')?.src || '');
-      const res = await fetch("{% url 'add_to_cart' %}", {
-        method: 'POST',
-        headers: {'X-CSRFToken': csrftoken},
-        body: data
-      });
-      const json = await res.json();
-      if (json.ok) {
-        // update header count and reload to show item
-        document.querySelectorAll('#cart-count').forEach(el => el.textContent = json.cart_count);
-        location.reload();
-      } else {
-        alert(json.error || 'Не вдалося додати в кошик');
-      }
+  // Recommended "Add" buttons
+  document.querySelectorAll('.rec-card button').forEach(btn => btn.addEventListener('click', async () => {
+    const id = btn.dataset.id;
+    const price = btn.dataset.price || 0;
+    const data = new FormData();
+    data.append('product_id', id);
+    data.append('name', btn.closest('.rec-card').querySelector('.name')?.innerText || 'Товар');
+    data.append('price', Math.round(parseFloat(price || 0)));
+    data.append('currency', 'UAH');
+    data.append('quantity', 1);
+    data.append('image', btn.closest('.rec-card').querySelector('img')?.src || '');
+    const res = await fetch("{% url 'add_to_cart' %}", {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrftoken},
+      body: data
     });
-  });
-
-  // Checkout button behavior: redirect to order_form for first_pid (server should pass 'first_pid' in context)
-  const checkoutLink = document.getElementById('checkoutLink');
-  // if using the JS checkout flow previously, we keep it disabled and rely on link behavior for order form.
+    const json = await res.json();
+    if (json.ok) {
+      document.querySelectorAll('#cart-count').forEach(el => el.textContent = json.cart_count);
+      location.reload();
+    } else {
+      alert(json.error || 'Не вдалося додати в кошик');
+    }
+  }));
 })();
 </script>
 {% endblock %}

@@ -3,21 +3,20 @@
 
 {% block head_extra %}
 <style>
-.product-page { padding: 28px 0; }
+.product-page { padding: 28px 0; color:var(--white) }
 .product-img-wrap { max-width: 560px; max-height: 560px; overflow:hidden; border-radius:12px; background:#faf9f6; }
 .product-img { display:block; width:100%; height:100%; object-fit:contain; }
 .thumbs { margin-top:10px; display:flex; gap:8px; }
 .thumb { width:56px; height:56px; border-radius:6px; overflow:hidden; cursor:pointer; border:1px solid rgba(0,0,0,0.06); background:#fff }
-.thumb img{ width:100%; height:100%; object-fit:cover }
-.btn-add { background:var(--accent-red); color:#fff; border:none; padding:10px 18px; border-radius:8px; font-weight:800 }
-.qty-input { width:90px; text-align:center; background:#0f0f0f; color:#fff; border:1px solid rgba(255,255,255,0.06); padding:6px; border-radius:6px }
+.qty-input { width:90px; text-align:center; background:rgba(255,255,255,0.03); color:var(--white); border:1px solid rgba(255,255,255,0.04); padding:6px; border-radius:6px }
+.btn-add { background:linear-gradient(90deg,var(--accent-red),#ff6b57); color:#fff; border:none; padding:10px 18px; border-radius:8px; font-weight:800 }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container product-page">
-  <div class="row">
-    <div class="col-md-6">
+  <div class="row" style="display:flex;gap:24px;align-items:flex-start">
+    <div style="flex:1;max-width:560px">
       <div class="product-img-wrap">
         <img id="mainImage" src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img">
       </div>
@@ -26,27 +25,32 @@
       </div>
     </div>
 
-    <div class="col-md-6">
-      <h1 style="font-weight:900">{{ product.name }}</h1>
+    <div style="flex:1;min-width:280px">
+      <h1 style="font-weight:900;color:var(--white)">{{ product.name }}</h1>
       <div style="color:var(--muted)">{{ product.description }}</div>
 
-      <div style="font-size:28px;font-weight:900;margin:18px 0;">{{ product.price_per_100g }} грн / 100г</div>
+      <div style="font-size:28px;font-weight:900;margin:18px 0;color:var(--white)">{{ product.price_per_100g }} грн / 100г</div>
 
       <div style="display:flex;align-items:center;gap:12px;">
         <div>
           <button id="qty-decr" class="btn btn-outline-light" type="button">−</button>
-          <!-- quantity as units (1 = 100g). Default 1, step 1 -->
           <input id="qty" class="qty-input" type="number" value="1" min="1" step="1" />
           <button id="qty-incr" class="btn btn-outline-light" type="button">+</button>
         </div>
 
-        <button id="addToCart" class="btn-add" data-product-id="{{ product.id }}">До кошика</button>
+        <div>
+          {% if user.is_authenticated %}
+            <button id="addToCart" class="btn-add" data-product-id="{{ product.id }}">До кошика</button>
+          {% else %}
+            <a href="{% url 'login' %}?next={{ request.path }}" class="btn-add">Увійти, щоб купити</a>
+          {% endif %}
+        </div>
       </div>
 
       <div id="product-msg" style="margin-top:12px;color:var(--muted)"></div>
 
       <hr style="border-color: rgba(255,255,255,0.04)">
-      <h4>Опис</h4>
+      <h4 style="color:var(--white)">Опис</h4>
       <p style="color:var(--muted)">{{ product.description }}</p>
     </div>
   </div>
@@ -61,9 +65,9 @@
     if (document.cookie && document.cookie !== '') {
       const cookies = document.cookie.split(';');
       for (let i = 0; i < cookies.length; i++) {
-        const c = cookies[i].trim();
-        if (c.substring(0, name.length + 1) === (name + '=')) {
-          cookieValue = decodeURIComponent(c.substring(name.length + 1));
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
           break;
         }
       }
@@ -81,43 +85,52 @@
     if (img) document.getElementById('mainImage').src = img.src;
   }));
 
-  document.getElementById('addToCart').addEventListener('click', async function(){
-    const btn = this;
-    const pid = btn.dataset.productId;
-    const qty = Math.max(1, parseInt(qtyInput.value || 1));
+  const addBtn = document.getElementById('addToCart');
+  if (addBtn){
+    addBtn.addEventListener('click', async function(){
+      const btn = this;
+      const pid = btn.dataset.productId;
+      const qty = Math.max(1, parseInt(qtyInput.value || 1));
 
-    const data = new FormData();
-    data.append('product_id', pid);
-    data.append('name', '{{ product.name|escapejs }}');
-    // price is per 100g major units (UAH)
-    data.append('price', Math.round(parseFloat('{{ product.price_per_100g }}' || '0')));
-    data.append('currency', 'UAH');
-    // send quantity as units (1 = 100g)
-    data.append('quantity', qty);
-    data.append('image', '{{ product.image.url }}');
+      const data = new FormData();
+      data.append('product_id', pid);
+      data.append('name', '{{ product.name|escapejs }}');
+      data.append('price', Math.round(parseFloat('{{ product.price_per_100g }}' || '0')));
+      data.append('currency', 'UAH');
+      data.append('quantity', qty);
+      data.append('image', '{{ product.image.url }}');
 
-    btn.disabled = true;
-    btn.textContent = 'Додаю...';
-    try {
-      const res = await fetch("{% url 'add_to_cart' %}", {
-        method: 'POST',
-        headers: { 'X-CSRFToken': csrftoken },
-        body: data
-      });
-      const json = await res.json();
-      if (json.ok) {
-        document.getElementById('product-msg').textContent = 'Додано в кошик';
-        document.querySelectorAll('#cart-count').forEach(el => el.textContent = json.cart_count);
-      } else {
-        document.getElementById('product-msg').textContent = json.error || 'Помилка додавання';
+      btn.disabled = true;
+      btn.textContent = 'Додаю...';
+      try {
+        const res = await fetch("{% url 'add_to_cart' %}", {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrftoken },
+          body: data
+        });
+
+        const json = await res.json();
+
+        // If server asks to login -> redirect to login_url
+        if (!res.ok && json && json.login_url) {
+          window.location.href = json.login_url + '&next=' + encodeURIComponent(window.location.pathname);
+          return;
+        }
+
+        if (json.ok) {
+          document.getElementById('product-msg').textContent = 'Додано в кошик';
+          document.querySelectorAll('#cart-count').forEach(el => el.textContent = json.cart_count);
+        } else {
+          document.getElementById('product-msg').textContent = json.error || 'Помилка додавання';
+        }
+      } catch (err) {
+        document.getElementById('product-msg').textContent = 'Помилка мережі';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'До кошика';
       }
-    } catch (err) {
-      document.getElementById('product-msg').textContent = 'Помилка мережі';
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'До кошика';
-    }
-  });
+    });
+  }
 })();
 </script>
 {% endblock %}

@@ -1,3 +1,4 @@
+# E:\soft\vugri\seafood\views.py
 import random
 import requests
 from decimal import Decimal
@@ -13,6 +14,7 @@ from django.core.mail import send_mail
 from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST, require_http_methods
+from django.urls import reverse
 
 import stripe
 
@@ -24,7 +26,7 @@ stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
 
 SAMPLES = {
     1: {
-        'name': 'Вуго��',
+        'name': 'Вугор',
         'description': 'Свіжий вугор — ідеальний для запікання, смаження та копчення.',
         'price_per_100g': '250.00',
         'image': '/static/images/png/vugor.png'
@@ -338,10 +340,15 @@ def cart_count(request):
 @require_POST
 def add_to_cart(request):
     """
-    POST params: product_id, name, price (int major units), currency, quantity, image (optional)
-    Returns JSON {ok: True, cart_count: N}
-    Backwards-compatible: if frontend sends grams (100, 200...) convert to units (100g->1)
+    Requires authentication. Returns 401 + login_url for anonymous users.
     """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'ok': False,
+            'error': 'login required',
+            'login_url': reverse('login') + '?next=' + request.path
+        }, status=401)
+
     product_id = request.POST.get('product_id')
     if not product_id:
         return JsonResponse({'ok': False, 'error': 'product_id required'}, status=400)
@@ -382,18 +389,9 @@ def add_to_cart(request):
     return JsonResponse({'ok': True, 'cart_count': cart_count(request)})
 
 
-def cart(request):
-    """
-    Alias view that shows cart page (used by urls as 'cart').
-    """
-    return cart_view(request)
-
-
 def cart_view(request):
     """
-    Renders cart page. Context: cart dict and totals by currency.
-    Also passes first_pid (id першого товару в кошику) щоб кнопка 'Оформити замовлення'
-    могла перенаправити на order_form для простого кейсу.
+    Renders cart page. Adds first_pid in context for simple single-item checkout flow.
     """
     cart = _get_cart(request)
     totals = {}
@@ -409,7 +407,6 @@ def cart_view(request):
     except Exception:
         recommended = []
 
-    # визначаємо перший product_id у кошику (str keys)
     first_pid = None
     for k in cart.keys():
         first_pid = k
@@ -427,8 +424,15 @@ def cart_view(request):
 @require_POST
 def update_cart_item(request):
     """
-    POST: product_id, quantity (units or grams). Returns JSON {ok: True, cart_count: N, totals: {...}}
+    POST: product_id, quantity (units or grams). Requires auth.
     """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'ok': False,
+            'error': 'login required',
+            'login_url': reverse('login') + '?next=' + request.path
+        }, status=401)
+
     product_id = request.POST.get('product_id')
     if not product_id:
         return JsonResponse({'ok': False, 'error': 'product_id required'}, status=400)
@@ -444,7 +448,6 @@ def update_cart_item(request):
     if quantity <= 0:
         del cart[product_id]
     else:
-        # convert grams->units if necessary
         if quantity >= 10 and quantity % 100 == 0:
             quantity = max(1, quantity // 100)
         cart[product_id]['quantity'] = quantity
@@ -463,10 +466,15 @@ def update_cart_item(request):
 @require_POST
 def checkout_session(request):
     """
-    Creates Stripe Checkout Session for items in cart.
-    If cart has multiple currencies -> returns error (simple policy).
-    Returns JSON {ok: True, url: session.url}
+    Creates Stripe Checkout Session for items in cart. Requires auth.
     """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'ok': False,
+            'error': 'login required',
+            'login_url': reverse('login') + '?next=' + request.path
+        }, status=401)
+
     cart = _get_cart(request)
     if not cart:
         return JsonResponse({'ok': False, 'error': 'cart empty'}, status=400)

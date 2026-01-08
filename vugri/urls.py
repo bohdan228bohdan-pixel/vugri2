@@ -1,34 +1,14 @@
+# E:\soft\vugri\vugri\urls.py
 from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views
 
-# Primary app providing product/order views
 from seafood import views as seafood_views
-
-# Try to import cart endpoints from 'main' app; if not available, try to use same names from 'seafood'
-# so this urls.py works in both setups.
-try:
-    from main import views as main_views
-except Exception:
-    main_views = None
-
-# Choose cart view callables: prefer main_views if it defines them, otherwise fallback to seafood_views
-def _choose(view_name):
-    if main_views and hasattr(main_views, view_name):
-        return getattr(main_views, view_name)
-    if hasattr(seafood_views, view_name):
-        return getattr(seafood_views, view_name)
-    raise ImportError(f"Не знайдено view '{view_name}' у main.views або seafood.views. Додай реалізацію або імпорт у urls.py.")
-
-add_to_cart_view = _choose('add_to_cart')
-cart_view = _choose('cart_view') if hasattr(seafood_views, 'cart_view') or (main_views and hasattr(main_views, 'cart_view')) else _choose('cart')
-update_cart_item_view = _choose('update_cart_item')
-checkout_session_view = _choose('checkout_session')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    # Site pages / product flow (from seafood app)
+    # Site / products
     path('', seafood_views.homepage, name='homepage'),
     path('products/', seafood_views.products, name='products'),
     path('product/<int:product_id>/', seafood_views.product_details, name='product_details'),
@@ -48,10 +28,10 @@ urlpatterns = [
     path('contact/', seafood_views.contacts, name='contact'),
     path('payment/<int:order_id>/', seafood_views.payment, name='payment'),
 
-    # Cart endpoints (selected implementations)
-    path('cart/add/', add_to_cart_view, name='add_to_cart'),
-    path('cart/', cart_view, name='cart'),
-    path('cart/update/', update_cart_item_view, name='update_cart_item'),
-    path('cart/checkout/', checkout_session_view, name='cart_checkout'),
+    # Cart endpoints
+    path('cart/add/', seafood_views.add_to_cart, name='add_to_cart'),
+    path('cart/', seafood_views.cart_view, name='cart'),
+    path('cart/update/', seafood_views.update_cart_item, name='update_cart_item'),
+    path('cart/checkout/', seafood_views.checkout_session, name='cart_checkout'),
     path('cart/clear/', seafood_views.clear_cart, name='clear_cart'),
 ]

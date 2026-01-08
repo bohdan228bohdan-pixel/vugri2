@@ -408,3 +408,48 @@ body{
 /* невеликі стилі для cart кнопки та кнопки оформлення */
 .cart-link { color: #fff; margin-left: 10px; font-weight:700; }
 .btn-danger { background:#e74c3c; border-color: #e74c3c; color:#fff; }
+
+/* Додай у static/styles.css або інший css який підключається у base.html */
+.auth-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  margin-left: 10px;
+  background: linear-gradient(90deg, #0f1720 0%, #111417 100%);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.auth-pill__left,
+.auth-pill__right {
+  display: inline-block;
+  padding: 8px 14px;
+  text-decoration: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: background .15s ease, color .15s ease;
+}
+
+/* Ліва частина (Вхід) — темніша */
+.auth-pill__left {
+  background: transparent;
+  color: #ddd;
+  border-right: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Права частина (Реєстрація) — акцентна кнопка */
+.auth-pill__right {
+  background: linear-gradient(90deg,#e74c3c,#ff6b57);
+  color: #fff;
+}
+
+/* Hover/focus */
+.auth-pill__left:hover { color: #fff; background: rgba(255,255,255,0.03); }
+.auth-pill__right:hover { filter: brightness(0.95); transform: translateY(-1px); }
+
+/* Адаптивність: на маленьких екранах зробити кнопки трохи меншими */
+@media (max-width: 576px) {
+  .auth-pill__left, .auth-pill__right { padding: 6px 10px; font-size:0.85rem; }
+}

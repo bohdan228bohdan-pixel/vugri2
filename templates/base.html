@@ -5,50 +5,68 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}VugriUkraine{% endblock %}</title>
-  <link rel="stylesheet" href="/static/styles.css">
+
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
+  <style>
+    /* CSS variables used by templates */
+    :root{
+      --white:#ffffff;
+      --muted:#9aa0a6;
+      --accent-red:#e74c3c;
+    }
+    .site-header{background:#0b0c0d;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.03)}
+    .site-brand{display:flex;align-items:center;gap:12px}
+    .site-nav{display:flex;gap:14px;align-items:center;justify-content:flex-end}
+    .site-nav a{color:var(--muted);text-decoration:none}
+    .site-nav .cta{background:var(--accent-red);color:#fff;padding:8px 12px;border-radius:8px;text-decoration:none}
+    .auth-pill{display:inline-flex;align-items:center;border-radius:999px;overflow:hidden;background:transparent;border:1px solid rgba(255,255,255,0.03)}
+    .auth-pill__left,.auth-pill__right{padding:8px 12px;text-decoration:none;color:var(--white);font-weight:700}
+    .auth-pill__left{background:transparent;color:var(--muted);border-right:1px solid rgba(255,255,255,0.03)}
+    .auth-pill__right{background:linear-gradient(90deg,var(--accent-red),#ff6b57);color:#fff}
+    .cart-link{color:var(--muted);margin-left:8px;font-weight:700}
+  </style>
+
   {% block head_extra %}{% endblock %}
 </head>
 <body>
   <header class="site-header">
-    <div class="site-brand">
-      <a href="/">
-        <img src="/static/images/png/logo.png" alt="logo">
-      </a>
-      <div style="color:var(--white);font-weight:800">VugriUkraine</div>
+    <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between">
+      <div class="site-brand">
+        <a href="/"><img src="{% static 'images/png/logo.png' %}" alt="logo" style="height:42px"></a>
+        <div style="color:var(--white);font-weight:800">VugriUkraine</div>
+      </div>
+
+      <nav class="site-nav">
+        <a href="/">Головна</a>
+        <a href="{% url 'products' %}">Каталог</a>
+        <a href="{% url 'cart' %}" class="cart-link">Кошик <span id="cart-count">{{ cart_count|default:"0" }}</span></a>
+        <a href="{% url 'about' %}">Про нас</a>
+        <a href="{% url 'contact' %}">Контакти</a>
+
+        {% if user.is_authenticated %}
+          <a href="{% url 'profile' %}" class="cta">Профіль</a>
+          <form method="post" action="{% url 'logout' %}" style="display:inline;margin-left:8px">
+            {% csrf_token %}
+            <button type="submit" class="cta" style="background:transparent;border:1px solid rgba(255,255,255,0.12);color:var(--white)">Вийти</button>
+          </form>
+        {% else %}
+          <div class="auth-pill" style="margin-left:10px">
+            <a href="{% url 'login' %}" class="auth-pill__left">Вхід</a>
+            <a href="{% url 'register' %}" class="auth-pill__right">Реєстрація</a>
+          </div>
+        {% endif %}
+      </nav>
     </div>
-
-    <nav class="site-nav">
-      <a href="/">Головна</a>
-      <a href="/products/">Каталог</a>
-      <a href="{% url 'cart' %}" class="cart-link">Кошик{% if cart_count %} ({{ cart_count }}){% endif %}</a>
-      <a href="/about/">Про нас</a>
-      <a href="{% url 'contact' %}">Контакти</a>
-
-      {% if user.is_authenticated %}
-        <a href="{% url 'profile' %}" class="cta">Профіль</a>
-
-        <form method="post" action="{% url 'logout' %}" style="display:inline">
-          {% csrf_token %}
-          <button type="submit" class="cta" style="background:transparent;border:1px solid rgba(255,255,255,0.15);">
-            Вийти
-          </button>
-        </form>
-      {% else %}
-        <a href="{% url 'register' %}" class="cta">Реєстрація</a>
-      {% endif %}
-    </nav>
   </header>
 
   <main>
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="site-footer">
-    <div style="max-width:1100px;margin:0 auto;padding:24px;color:var(--muted)">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-        <div>© VugriUkraine — Свіжий вугор</div>
-        <div>Тел: <strong>+380986666466</strong></div>
-      </div>
+  <footer style="background:#080808;padding:24px;margin-top:40px;color:var(--muted)">
+    <div style="max-width:1100px;margin:0 auto;display:flex;justify-content:space-between">
+      <div>© VugriUkraine — Свіжий вугор</div>
+      <div>Тел: <strong>+380986666466</strong></div>
     </div>
   </footer>
 
