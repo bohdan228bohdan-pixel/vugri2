@@ -62,3 +62,38 @@ class Favorite(models.Model):
 
     def __str__(self):
         return f'{self.user} — {self.product}'
+    
+    from django.conf import settings
+    from django.db import models
+
+class Favorite(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='favorites')
+    product = models.ForeignKey('seafood.SeafoodProduct', on_delete=models.CASCADE, related_name='favorited_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'product')
+        ordering = ['-created_at']
+        verbose_name = 'Обране'
+        verbose_name_plural = 'Обране'
+
+    def __str__(self):
+        return f'{self.user} — {self.product}'
+
+
+class Review(models.Model):
+    RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reviews')
+    product = models.ForeignKey('seafood.SeafoodProduct', on_delete=models.CASCADE, related_name='reviews')
+    rating = models.PositiveSmallIntegerField(choices=RATING_CHOICES)
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Відгук'
+        verbose_name_plural = 'Відгуки'
+
+    def __str__(self):
+        return f'Review {self.rating} by {self.user} for {self.product}'

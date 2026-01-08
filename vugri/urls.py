@@ -1,4 +1,4 @@
-# E:\soft\vugri\vugri\urls.py
+# E:\soft\vugri\vugri\urls.py  (замініть повністю або онови маршрути)
 from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views
@@ -12,6 +12,7 @@ urlpatterns = [
     path('', seafood_views.homepage, name='homepage'),
     path('products/', seafood_views.products, name='products'),
     path('product/<int:product_id>/', seafood_views.product_details, name='product_details'),
+    path('product/<int:product_id>/review/', seafood_views.submit_review, name='submit_review'),
     path('order/<int:product_id>/', seafood_views.order_form, name='order_form'),
     path('submit_order/', seafood_views.submit_order, name='submit_order'),
     path('fetch_branches/', seafood_views.fetch_postal_branches, name='fetch_branches'),
