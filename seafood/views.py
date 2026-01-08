@@ -15,10 +15,11 @@ from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST, require_http_methods
 from django.urls import reverse
+from django.templatetags.static import static
 
 import stripe
 
-from .models import EmailVerification, Order, SeafoodProduct
+from .models import EmailVerification, Order, SeafoodProduct, Favorite
 
 # Configure Stripe (if STRIPE_SECRET_KEY not provided, stripe.api_key will be None)
 stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
@@ -84,15 +85,38 @@ def homepage(request):
 
 
 def products(request):
-    products = SeafoodProduct.objects.all()
-    return render(request, 'products.html', {'products': products})
+    products_qs = SeafoodProduct.objects.all()
+
+    # If user is authenticated, get set of favorited product ids for fast template checks
+    favorited_ids = set()
+    if request.user.is_authenticated:
+        try:
+            favorited_ids = set(Favorite.objects.filter(user=request.user).values_list('product_id', flat=True))
+        except Exception:
+            favorited_ids = set()
+
+    return render(request, 'products.html', {
+        'products': products_qs,
+        'favorited_ids': favorited_ids,
+    })
 
 
 def product_details(request, product_id):
     product_obj, _db_prod = _product_from_db_or_sample(product_id)
     if not product_obj:
         return render(request, '404.html', status=404)
-    return render(request, 'product_details.html', {'product': product_obj})
+
+    is_favorited = False
+    try:
+        if request.user.is_authenticated:
+            is_favorited = Favorite.objects.filter(user=request.user, product_id=product_id).exists()
+    except Exception:
+        is_favorited = False
+
+    return render(request, 'product_details.html', {
+        'product': product_obj,
+        'is_favorited': is_favorited,
+    })
 
 
 def order_form(request, product_id):
@@ -113,8 +137,8 @@ def submit_order(request):
         return render(request, '404.html', status=404)
 
     # delivery
-    delivery_type = request.POST.get('delivery_type', '').strip()  # ukr_branch / nova_branch / nova_courier
-    postal = request.POST.get('postal', '').strip()  # ukr / nova (hidden)
+    delivery_type = request.POST.get('delivery_type', '').strip()
+    postal = request.POST.get('postal', '').strip()
     region = request.POST.get('region', '').strip()
     city = request.POST.get('city', '').strip()
     branch = request.POST.get('branch', '').strip()
@@ -129,7 +153,7 @@ def submit_order(request):
 
     full_name = f"{last_name} {first_name} {middle_name}".strip()
 
-    # for courier: store address into branch field (so we don't change DB model now)
+    # for courier: store address into branch field
     if address:
         branch = address
 
@@ -164,8 +188,8 @@ def submit_order(request):
         phone=phone,
         region=region,
         city=city,
-        postal=postal,      # ukr / nova
-        branch=branch,      # branch number OR address for courier
+        postal=postal,
+        branch=branch,
         quantity_g=quantity,
         total_price=total_price,
         status='created',
@@ -523,3 +547,71 @@ def clear_cart(request):
     request.session.pop('cart', None)
     request.session.modified = True
     return redirect('cart')
+
+# Додати в кінець (або поруч з іншими views)
+from django.contrib.auth.decorators import login_required
+from django.urls import reverse
+from django.views.decorators.http import require_POST
+
+from .models import Favorite  # <- переконайся, що імпорт додано
+
+@require_POST
+def toggle_favorite(request):
+    """
+    Toggle favorite for authenticated user.
+    If product exists only in SAMPLES, create it in DB first so we can reference it.
+    Returns JSON: {ok: True, favorited: True/False, favorites_count: N, login_url: ...}
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'ok': False,
+            'error': 'login required',
+            'login_url': reverse('login') + '?next=' + request.path
+        }, status=401)
+
+    product_id = request.POST.get('product_id')
+    if not product_id:
+        return JsonResponse({'ok': False, 'error': 'product_id required'}, status=400)
+
+    # ensure product_id is an int
+    try:
+        pid = int(product_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'ok': False, 'error': 'invalid product_id'}, status=400)
+
+    # Try to get product from DB or samples
+    product_obj, db_prod = _product_from_db_or_sample(pid)
+    if not product_obj:
+        return JsonResponse({'ok': False, 'error': 'product not found'}, status=404)
+
+    # If product is sample (not in DB) -> create DB record so we can FK to it
+    if db_prod is None:
+        try:
+            price_per_100g = Decimal(str(product_obj.price_per_100g))
+        except Exception:
+            price_per_100g = Decimal('0')
+        db_prod = SeafoodProduct.objects.create(
+            name=product_obj.name,
+            description=product_obj.description,
+            price_per_100g=price_per_100g,
+        )
+
+    # Toggle favorite
+    fav, created = Favorite.objects.get_or_create(user=request.user, product=db_prod)
+    if not created:
+        fav.delete()
+        favorited = False
+    else:
+        favorited = True
+
+    count = Favorite.objects.filter(user=request.user).count()
+    return JsonResponse({'ok': True, 'favorited': favorited, 'favorites_count': count})
+
+@login_required
+def favorites_view(request):
+    """
+    Renders the favorites page for the logged-in user.
+    """
+    favs = Favorite.objects.filter(user=request.user).select_related('product')
+    products = [f.product for f in favs]
+    return render(request, 'favorites.html', {'products': products})

@@ -34,4 +34,8 @@ urlpatterns = [
     path('cart/update/', seafood_views.update_cart_item, name='update_cart_item'),
     path('cart/checkout/', seafood_views.checkout_session, name='cart_checkout'),
     path('cart/clear/', seafood_views.clear_cart, name='clear_cart'),
+
+    # Favorites
+    path('favorites/', seafood_views.favorites_view, name='favorites'),
+    path('favorites/toggle/', seafood_views.toggle_favorite, name='toggle_favorite'),
 ]

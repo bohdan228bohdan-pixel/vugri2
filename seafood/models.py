@@ -42,3 +42,23 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order#{self.id} {self.full_name} {self.product.name}"
+    
+    from django.conf import settings
+    from django.db import models
+
+# (припускаю, що SeafoodProduct вже визначений у цьому файлі)
+# Додаємо модель Favorite
+
+class Favorite(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='favorites')
+    product = models.ForeignKey('seafood.SeafoodProduct', on_delete=models.CASCADE, related_name='favorited_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'product')
+        ordering = ['-created_at']
+        verbose_name = 'Обране'
+        verbose_name_plural = 'Обране'
+
+    def __str__(self):
+        return f'{self.user} — {self.product}'

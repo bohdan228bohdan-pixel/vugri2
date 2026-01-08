@@ -40,6 +40,7 @@
         <a href="/">Головна</a>
         <a href="{% url 'products' %}">Каталог</a>
         <a href="{% url 'cart' %}" class="cart-link">Кошик <span id="cart-count">{{ cart_count|default:"0" }}</span></a>
+        <a href="{% url 'favorites' %}" class="cart-link" style="margin-left:10px">❤ Обране</a>
         <a href="{% url 'about' %}">Про нас</a>
         <a href="{% url 'contact' %}">Контакти</a>
 
