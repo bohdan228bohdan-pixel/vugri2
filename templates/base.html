@@ -1,0 +1,57 @@
+{% load static %}
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}VugriUkraine{% endblock %}</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-brand">
+      <a href="/">
+        <img src="/static/images/png/logo.png" alt="logo">
+      </a>
+      <div style="color:var(--white);font-weight:800">VugriUkraine</div>
+    </div>
+
+    <nav class="site-nav">
+      <a href="/">Головна</a>
+      <a href="/products/">Каталог</a>
+      <a href="/about/">Про нас</a>
+      <a href="{% url 'contact' %}">Контакти</a>
+
+      {% if user.is_authenticated %}
+        <a href="{% url 'profile' %}" class="cta">Профіль</a>
+
+        <form method="post" action="{% url 'logout' %}" style="display:inline">
+          {% csrf_token %}
+          <button type="submit" class="cta" style="background:transparent;border:1px solid rgba(255,255,255,0.15);">
+            Вийти
+          </button>
+        </form>
+      {% else %}
+        <a href="{% url 'login' %}">Вхід</a>
+        <a href="{% url 'register' %}" class="cta">Реєстрація</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div style="max-width:1100px;margin:0 auto;padding:24px;color:var(--muted)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>© VugriUkraine — Свіжий вугор</div>
+        <div>Тел: <strong>+380986666466</strong></div>
+      </div>
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

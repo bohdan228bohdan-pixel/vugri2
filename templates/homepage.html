@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}VugriUkraine — Свіжий вугор{% endblock %}
+
+{% block content %}
+  <section class="hero" style="background-image:url('/static/images/png/banner.png')">
+      <div class="hero-inner">
+          <div class="hero-left">
+              <h1>Свіжий вугор — прямо з ферми</h1>
+              <p>Найкращий вугор: копчений, свіжий, під замовлення. Доставка по всій Україні, упаковка з дотриманням холодового ланцюга.</p>
+              <div style="margin-top:18px">
+                  <a href="/products/" class="btn btn-primary">Купити вугра</a>
+                  <a href="/contact/" class="btn btn-outline" style="margin-left:10px">Контакти</a>
+              </div>
+          </div>
+          <div class="hero-right">
+              <div class="product-card">
+                  <img src="/static/images/png/vugor.png" alt="Свіжий вугор">
+                  <h3 style="color:var(--white);margin-top:12px">Свіжий вугор</h3>
+                  <p style="color:var(--muted);margin:6px 0">Ціна від 250 грн / 100г — замовлення оптом та в роздріб.</p>
+                  <div class="btn-group product-actions">
+                      <a href="/product/1/?buy=1" class="btn btn-primary">Купити вугра</a>
+                      <a href="/product/1/" class="btn btn-outline">Детальніше</a>
+                      <a href="/contact/" class="btn btn-outline">Контакти</a>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </section>
+
+  <section class="features">
+      <div class="feature">
+          <h3>Якість</h3>
+          <p>Суворий контроль походження та фермерських умов вирощування.</p>
+      </div>
+      <div class="feature">
+          <h3>Свіжість</h3>
+          <p>Холодильна ланка на кожному етапі — продукт завжди приємно свіжий.</p>
+      </div>
+      <div class="feature">
+          <h3>Доставка</h3>
+          <p>Доставка у місто та кур'єром, можливість самовивозу.</p>
+      </div>
+  </section>
+
+  <section class="cta-banner">
+      <h3>Готові скуштувати найкращий вугор?</h3>
+      <a href="/products/" class="btn btn-primary">Замовити зараз</a>
+  </section>
+
+  <section style="max-width:1100px;margin:30px auto;padding:0 24px;text-align:center">
+      <h2 style="color:var(--white)">VugriUkraine</h2>
+      <p style="color:var(--muted);max-width:820px;margin:10px auto 20px">VugriUkraine — інтернет-магазин, де можна купити раки, краби, натуральну ікру, вугрі та багато іншого.</p>
+      <img src="/static/images/png/woman.png" alt="Жінка" style="max-width:420px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.6)">
+  </section>
+{% endblock %}

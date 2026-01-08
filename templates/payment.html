@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Оплата — замовлення #{{ order.id }}{% endblock %}
+
+{% block content %}
+  <main style="max-width:900px;margin:36px auto;padding:0 24px;color:var(--muted)">
+    <h1 style="color:var(--white)">Оплата</h1>
+
+    <div style="background:var(--card);padding:18px;border-radius:12px;color:var(--white)">
+      <p><strong>Замовлення:</strong> #{{ order.id }}</p>
+      <p><strong>Товар:</strong> {{ order.product.name }}</p>
+      <p><strong>Кількість:</strong> {{ order.quantity_g }} г</p>
+      <p><strong>Сума:</strong> {{ order.total_price }} грн</p>
+
+      <div style="margin-top:14px;padding:12px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10)">
+        <div style="color:var(--white);font-weight:900;margin-bottom:6px">Важливо</div>
+        <div style="color:var(--muted);line-height:1.5">
+          Ви платите <strong style="color:var(--white)">завдаток</strong>.
+          <strong style="color:var(--white)">ПОВНА сума оплати</strong> — на відділенні пошти.
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:14px 0">
+
+      <p style="color:var(--muted)">
+        Тут пізніше буде інтеграція оплати (LiqPay/WayForPay/Fondy).
+        Зараз кнопка просто ставить статус “paid”.
+      </p>
+
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">Оплатити</button>
+      </form>
+    </div>
+  </main>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ product.name }} — VugriUkraine{% endblock %}
+
+{% block content %}
+  <main style="max-width:1100px;margin:36px auto;padding:0 24px;color:var(--muted)">
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:28px;align-items:start">
+          <section>
+              <h1 style="color:var(--white);margin-bottom:8px">{{ product.name }}</h1>
+              <p style="color:var(--muted);line-height:1.6">{{ product.description }}</p>
+              <p style="color:var(--white);font-weight:700;margin-top:12px">
+                Ціна: {{ product.price_per_100g }} грн за 100г
+              </p>
+              <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
+                  <a href="{% url 'order_form' product.id %}?buy=1" class="btn btn-primary">Купити</a>
+              </div>
+          </section>
+
+          <aside>
+              <div class="product-card">
+                  {% if product.image %}
+                      <img src="{{ product.image.url }}" alt="{{ product.name }}">
+                  {% else %}
+                      <img src="/static/images/png/vugor.png" alt="{{ product.name }}">
+                  {% endif %}
+                  <div style="margin-top:10px;color:var(--muted)">Пакування з дотриманням холодового ланцюга</div>
+              </div>
+          </aside>
+      </div>
+  </main>
+{% endblock %}

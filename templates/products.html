@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Каталог — VugriUkraine{% endblock %}
+
+{% block content %}
+  <main style="max-width:1200px;margin:36px auto;padding:0 24px;color:var(--muted)">
+      <h1 style="color:var(--white);text-align:center;margin-bottom:18px">Каталог товарів</h1>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px;align-items:start">
+
+          <article class="product-card" aria-labelledby="p-eel">
+              <img src="/static/images/png/vugor.png" alt="Вугор">
+              <h3 id="p-eel" style="color:var(--white);margin-top:12px">Вугор</h3>
+              <p style="color:var(--muted);margin:6px 0">Свіжий вугор, відбірна партія.</p>
+              <p style="color:var(--white);font-weight:700">Ціна: 250 грн за 100г</p>
+              <div class="btn-group product-actions">
+                  <a href="/product/1/?buy=1" class="btn btn-primary">Купити</a>
+                  <a href="/product/1/" class="btn btn-outline">Детальніше</a>
+                  <a href="/contact/" class="btn btn-outline">Контакти</a>
+              </div>
+          </article>
+
+          <article class="product-card" aria-labelledby="p-ikra">
+              <img src="/static/images/png/ikra.png" alt="Ікра">
+              <h3 id="p-ikra" style="color:var(--white);margin-top:12px">Натуральна ікра</h3>
+              <p style="color:var(--muted);margin:6px 0">Чиста, солона, ідеальна для святкового столу.</p>
+              <p style="color:var(--white);font-weight:700">Ціна: 1200 грн за 100г</p>
+              <div class="btn-group product-actions">
+                  <a href="/product/2/?buy=1" class="btn btn-primary">Купити</a>
+                  <a href="/product/2/" class="btn btn-outline">Детальніше</a>
+                  <a href="/contact/" class="btn btn-outline">Контакти</a>
+              </div>
+          </article>
+
+          <article class="product-card" aria-labelledby="p-redfish">
+              <img src="/static/images/png/redfish.png" alt="Риба">
+              <h3 id="p-redfish" style="color:var(--white);margin-top:12px">Раки / Краби</h3>
+              <p style="color:var(--muted);margin:6px 0">Свіжі раки та краби — замовлення під замір.</p>
+              <p style="color:var(--white);font-weight:700">Ціна: від 180 грн за 100г</p>
+              <div class="btn-group product-actions">
+                  <a href="/product/3/?buy=1" class="btn btn-primary">Купити</a>
+                  <a href="/product/3/" class="btn btn-outline">Детальніше</a>
+                  <a href="/contact/" class="btn btn-outline">Контакти</a>
+              </div>
+          </article>
+
+      </div>
+  </main>
+{% endblock %}

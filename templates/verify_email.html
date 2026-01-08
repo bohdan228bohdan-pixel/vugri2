@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Підтвердження email — VugriUkraine{% endblock %}
+
+{% block content %}
+  <div style="min-height:60vh;display:flex;align-items:center;justify-content:center;padding:60px 20px">
+    <div style="max-width:420px;width:100%;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.25));padding:22px;border-radius:12px;color:#fff">
+      <h2 style="margin-top:0">Введіть код підтвердження</h2>
+
+      {% if error %}
+        <div style="background:#3b0000;color:#ffc9c9;padding:8px;border-radius:8px">{{ error }}</div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <input name="code" placeholder="Код" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:#fff;margin-bottom:12px" />
+        <button type="submit" class="btn btn-primary">Підтвердити</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}
