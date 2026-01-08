@@ -1,0 +1,4 @@
+/* Small cart/modal overrides to match design */
+.cart-card { box-shadow: 0 6px 24px rgba(0,0,0,0.35); }
+.btn-checkout { box-shadow: 0 8px 20px rgba(225,11,0,0.12); }
+.rec-card .btn { background: linear-gradient(90deg, #E10B00, #ff3b3b); }

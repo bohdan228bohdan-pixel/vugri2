@@ -1,32 +1,129 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ product.name }} — VugriUkraine{% endblock %}
+{% block title %}{{ product.name }} — Dieller Bus{% endblock %}
+
+{% block head_extra %}
+<style>
+/* Minimal product layout tweaks */
+.product-page { padding: 32px 0; }
+.product-img { width:100%; border-radius:12px; object-fit:cover; }
+.product-meta { padding-left: 28px; }
+.badge-qty { display:inline-block; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:8px; color:var(--muted); }
+.btn-add { background:var(--accent-red); color:#fff; border:none; padding:10px 18px; border-radius:8px; font-weight:800 }
+.qty-controls { display:inline-flex; gap:8px; align-items:center }
+.qty-controls button { background:transparent; border:1px solid rgba(255,255,255,0.06); color:#fff; padding:6px 10px; border-radius:6px }
+.qty-controls input { width:68px; text-align:center; padding:6px; border-radius:6px; background:#0f0f0f; border:1px solid rgba(255,255,255,0.06); color:#fff }
+</style>
+{% endblock %}
 
 {% block content %}
-  <main style="max-width:1100px;margin:36px auto;padding:0 24px;color:var(--muted)">
-      <div style="display:grid;grid-template-columns:1fr 360px;gap:28px;align-items:start">
-          <section>
-              <h1 style="color:var(--white);margin-bottom:8px">{{ product.name }}</h1>
-              <p style="color:var(--muted);line-height:1.6">{{ product.description }}</p>
-              <p style="color:var(--white);font-weight:700;margin-top:12px">
-                Ціна: {{ product.price_per_100g }} грн за 100г
-              </p>
-              <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
-                  <a href="{% url 'order_form' product.id %}?buy=1" class="btn btn-primary">Купити</a>
-              </div>
-          </section>
+<div class="container product-page">
+  <div class="row g-4">
+    <div class="col-md-6">
+      <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img">
+    </div>
 
-          <aside>
-              <div class="product-card">
-                  {% if product.image %}
-                      <img src="{{ product.image.url }}" alt="{{ product.name }}">
-                  {% else %}
-                      <img src="/static/images/png/vugor.png" alt="{{ product.name }}">
-                  {% endif %}
-                  <div style="margin-top:10px;color:var(--muted)">Пакування з дотриманням холодового ланцюга</div>
-              </div>
-          </aside>
+    <div class="col-md-6 product-meta">
+      <h1 style="font-weight:900">{{ product.name }}</h1>
+      <div style="margin:10px 0; color:var(--muted)">{{ product.description }}</div>
+
+      <div style="font-size:28px;font-weight:900;margin:18px 0;">{{ product.price_per_100g }} грн / 100г</div>
+
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="qty-controls" aria-label="Quantity">
+          <button id="qty-decr" type="button" aria-label="Зменшити">−</button>
+          <input id="qty" type="number" min="100" step="100" value="100" aria-label="Кількість (гр)"/>
+          <button id="qty-incr" type="button" aria-label="Збільшити">+</button>
+        </div>
+
+        <button id="addToCart" class="btn-add" data-product-id="{{ product.id }}" aria-label="Додати в кошик">До кошика</button>
       </div>
-  </main>
+
+      <div id="product-msg" style="margin-top:12px;color:var(--muted)"></div>
+
+      <hr style="border-color: rgba(255,255,255,0.04)">
+
+      <h4>Опис</h4>
+      <p style="color:var(--muted)">{{ product.description }}</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  // CSRF cookie helper
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const c = cookies[i].trim();
+        if (c.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(c.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  const qtyInput = document.getElementById('qty');
+  document.getElementById('qty-incr').addEventListener('click', () => {
+    // step 100g (example)
+    const v = Math.max(100, parseInt(qtyInput.value || '100') + parseInt(qtyInput.step || '100'));
+    qtyInput.value = v;
+  });
+  document.getElementById('qty-decr').addEventListener('click', () => {
+    const step = parseInt(qtyInput.step || '100');
+    const v = Math.max(step, parseInt(qtyInput.value || String(step)) - step);
+    qtyInput.value = v;
+  });
+
+  document.getElementById('addToCart').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const productId = btn.dataset.productId;
+    const quantity = parseInt(qtyInput.value || '100');
+
+    const data = new FormData();
+    data.append('product_id', productId);
+    data.append('name', '{{ product.name|escapejs }}');
+    // convert price per 100g -> price per 100g integer (UAH)
+    data.append('price', Math.round(parseFloat('{{ product.price_per_100g }}' || '0')));
+    data.append('currency', 'UAH');
+    data.append('quantity', quantity);
+    data.append('image', '{{ product.image.url }}');
+
+    btn.disabled = true;
+    btn.textContent = 'Додаю...';
+
+    try {
+      const res = await fetch("{% url 'add_to_cart' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+        body: data
+      });
+      const json = await res.json();
+      if (json.ok) {
+        document.getElementById('product-msg').textContent = 'Товар додано в кошик';
+        // update header/cart count if exists
+        const cels = document.querySelectorAll('#cart-count');
+        cels.forEach(el => el.textContent = json.cart_count);
+        // open cart page in new tab (optional) or show modal
+        // window.location.href = "{% url 'cart' %}";
+      } else {
+        document.getElementById('product-msg').textContent = json.error || 'Помилка додавання';
+      }
+    } catch (err) {
+      document.getElementById('product-msg').textContent = 'Помилка мережі';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'До кошика';
+    }
+  });
+})();
+</script>
 {% endblock %}

@@ -1,5 +1,6 @@
 import random
 import requests
+from decimal import Decimal
 from types import SimpleNamespace
 
 from django.conf import settings
@@ -9,10 +10,16 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
+
+import stripe
 
 from .models import EmailVerification, Order, SeafoodProduct
+
+# Configure Stripe (if STRIPE_SECRET_KEY not provided, stripe.api_key will be None)
+stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
 
 
 SAMPLES = {
@@ -129,7 +136,11 @@ def submit_order(request):
         branch = address
 
     # quantity + price
-    quantity = int(request.POST.get('quantity', 100))
+    try:
+        quantity = int(request.POST.get('quantity', 100))
+    except (TypeError, ValueError):
+        quantity = 100
+
     price_per_100g = Decimal(str(product_obj.price_per_100g))
     total_price = (Decimal(quantity) / Decimal(100)) * price_per_100g
 
@@ -311,5 +322,173 @@ def profile(request):
 def about(request):
     return render(request, 'about.html')
 
+
 def contacts(request):
     return render(request, 'contacts.html')
+
+
+# -----------------------
+# Session-based cart API
+# -----------------------
+
+def _get_cart(request):
+    return request.session.setdefault('cart', {})
+
+
+def cart_count(request):
+    return sum(int(item.get('quantity', 0)) for item in _get_cart(request).values())
+
+
+@require_POST
+def add_to_cart(request):
+    """
+    POST params: product_id, name, price (int major units), currency, quantity, image (optional)
+    Returns JSON {ok: True, cart_count: N}
+    """
+    product_id = request.POST.get('product_id')
+    if not product_id:
+        return JsonResponse({'ok': False, 'error': 'product_id required'}, status=400)
+
+    name = request.POST.get('name', 'Товар')
+    try:
+        price = int(float(request.POST.get('price', 0)))
+    except (TypeError, ValueError):
+        price = 0
+    currency = request.POST.get('currency', 'UAH')
+    try:
+        quantity = int(request.POST.get('quantity', 1))
+    except (TypeError, ValueError):
+        quantity = 1
+    image = request.POST.get('image', '')
+
+    cart = _get_cart(request)
+    if product_id in cart:
+        cart[product_id]['quantity'] = int(cart[product_id].get('quantity', 0)) + quantity
+    else:
+        cart[product_id] = {
+            'name': name,
+            'price': price,
+            'currency': currency,
+            'quantity': quantity,
+            'image': image,
+        }
+    request.session.modified = True
+    return JsonResponse({'ok': True, 'cart_count': cart_count(request)})
+
+
+def cart(request):
+    """
+    Alias view that shows cart page (used by urls as 'cart').
+    """
+    return cart_view(request)
+
+
+def cart_view(request):
+    """
+    Renders cart page. Context: cart dict and totals by currency.
+    """
+    cart = _get_cart(request)
+    totals = {}
+    for pid, item in cart.items():
+        cur = item.get('currency', 'UAH')
+        totals.setdefault(cur, 0)
+        totals[cur] += int(item.get('price', 0)) * int(item.get('quantity', 0))
+
+    # Optional: recommended products to show under cart (example: first 6 SeafoodProduct)
+    recommended = []
+    try:
+        recommended = SeafoodProduct.objects.all()[:6]
+    except Exception:
+        recommended = []
+
+    return render(request, 'cart.html', {
+        'cart': cart,
+        'totals': totals,
+        'cart_count': cart_count(request),
+        'products': recommended,
+    })
+
+
+@require_POST
+def update_cart_item(request):
+    """
+    POST: product_id, quantity
+    Returns JSON {ok: True, cart_count: N, totals: {...}}
+    """
+    product_id = request.POST.get('product_id')
+    if not product_id:
+        return JsonResponse({'ok': False, 'error': 'product_id required'}, status=400)
+    try:
+        quantity = int(request.POST.get('quantity', 0))
+    except (TypeError, ValueError):
+        quantity = 0
+
+    cart = _get_cart(request)
+    if product_id not in cart:
+        return JsonResponse({'ok': False, 'error': 'product not found'}, status=404)
+
+    if quantity <= 0:
+        del cart[product_id]
+    else:
+        cart[product_id]['quantity'] = quantity
+
+    request.session.modified = True
+
+    totals = {}
+    for pid, item in cart.items():
+        cur = item.get('currency', 'UAH')
+        totals.setdefault(cur, 0)
+        totals[cur] += int(item.get('price', 0)) * int(item.get('quantity', 0))
+
+    return JsonResponse({'ok': True, 'cart_count': cart_count(request), 'totals': totals})
+
+
+@require_POST
+def checkout_session(request):
+    """
+    Creates Stripe Checkout Session for items in cart.
+    If cart has multiple currencies -> returns error (simple policy).
+    Returns JSON {ok: True, url: session.url}
+    """
+    cart = _get_cart(request)
+    if not cart:
+        return JsonResponse({'ok': False, 'error': 'cart empty'}, status=400)
+
+    currencies = {item.get('currency', 'UAH') for item in cart.values()}
+    if len(currencies) > 1:
+        return JsonResponse({'ok': False, 'error': 'cart has multiple currencies; checkout one currency at a time'}, status=400)
+    currency = currencies.pop()
+
+    if not stripe.api_key:
+        return JsonResponse({'ok': False, 'error': 'stripe not configured on server'}, status=500)
+
+    line_items = []
+    for pid, item in cart.items():
+        unit_amount = int(item.get('price', 0)) * 100  # major->minor units
+        line_items.append({
+            'price_data': {
+                'currency': currency.lower(),
+                'product_data': {
+                    'name': item.get('name'),
+                },
+                'unit_amount': unit_amount,
+            },
+            'quantity': int(item.get('quantity', 1)),
+        })
+
+    success_url = request.build_absolute_uri('/payment-success/')
+    cancel_url = request.build_absolute_uri('/cart/')
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        mode='payment',
+        line_items=line_items,
+        success_url=success_url,
+        cancel_url=cancel_url,
+    )
+
+    # Optionally clear cart after creating session or after webhook confirms payment.
+    # request.session['cart'] = {}
+    # request.session.modified = True
+
+    return JsonResponse({'ok': True, 'url': session.url})

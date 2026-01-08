@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Кошик — Dieller Bus{% endblock %}
+
+{% block head_extra %}
+<style>
+/* Cart modal-like page */
+.cart-wrap { padding: 36px 0; }
+.cart-card { border:1px solid rgba(255,255,255,0.04); border-radius:8px; padding:18px; background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent); }
+.cart-item { display:flex; gap:14px; align-items:center; padding:14px 8px; border-bottom:1px solid rgba(255,255,255,0.03); }
+.cart-item:last-child { border-bottom:none; }
+.cart-thumb { width:72px; height:72px; object-fit:cover; border-radius:8px; }
+.qty-box { display:flex; gap:8px; align-items:center; }
+.qty-box button { border:1px solid rgba(255,255,255,0.06); background:transparent; color:#fff; padding:6px 10px; border-radius:6px }
+.qty-box input { width:72px; text-align:center; padding:6px; border-radius:6px; background:#0f0f0f; color:#fff; border:1px solid rgba(255,255,255,0.06) }
+.total-row { display:flex; justify-content:space-between; align-items:center; padding:12px; }
+.btn-checkout { background:var(--accent-red); color:#fff; padding:10px 18px; border-radius:8px; border:none; font-weight:800 }
+.empty { padding:28px; color:var(--muted) }
+.recommended { margin-top:18px }
+.rec-grid { display:flex; gap:12px; overflow:auto; padding-bottom:8px }
+.rec-card { width:160px; min-width:160px; border-radius:8px; padding:8px; background:rgba(255,255,255,0.02); text-align:center }
+.rec-card img { width:100%; height:96px; object-fit:cover; border-radius:6px }
+.rec-card .btn { margin-top:8px; background:var(--accent-red); color:#fff; border:none; padding:6px 8px; border-radius:6px; font-weight:700 }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container cart-wrap">
+  <h1 style="font-weight:900; margin-bottom:12px">Кошик</h1>
+
+  {% if cart %}
+    <div class="cart-card">
+      <div id="cart-items">
+        {% for pid, item in cart.items %}
+          <div class="cart-item" data-pid="{{ pid }}">
+            {% if item.image %}
+              <img src="{{ item.image }}" alt="{{ item.name }}" class="cart-thumb">
+            {% endif %}
+            <div style="flex:1">
+              <div style="font-weight:800">{{ item.name }}</div>
+              <div style="color:var(--muted); margin-top:6px;">{{ item.price }} {{ item.currency }}</div>
+            </div>
+
+            <div style="text-align:right">
+              <div class="qty-box">
+                <button class="qty-decr" aria-label="minus">−</button>
+                <input class="cart-qty" type="number" min="0" value="{{ item.quantity }}">
+                <button class="qty-incr" aria-label="plus">+</button>
+              </div>
+              <div style="margin-top:8px; font-weight:900">{{ item.price|add:"0" }} {{ item.currency }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="total-row">
+        <div style="color:var(--muted)">Є купон зі знижкою?</div>
+        <div style="font-weight:900">
+          {% for cur, total in totals.items %}
+            <div>{{ cur }}: {{ total }} {{ cur }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 0">
+        <a class="btn btn-outline-light" href="{% url 'products' %}">← Продовжити покупки</a>
+        <button id="checkoutBtn" class="btn-checkout">Оформити замовлення</button>
+      </div>
+    </div>
+
+    <div class="recommended">
+      <h3 style="margin-top:18px">Рекомендуємо придбати</h3>
+      <div class="rec-grid">
+        <!-- Sample recommended (replace with real data) -->
+        {% for p in products|default:[] %}
+          <div class="rec-card">
+            <img src="{{ p.image.url }}" alt="{{ p.name }}">
+            <div style="font-weight:800; margin-top:8px">{{ p.name }}</div>
+            <div style="color:var(--muted)">{{ p.price_per_100g }} грн</div>
+            <button class="btn rec-add" data-id="{{ p.id }}" data-price="{{ p.price_per_100g }}">До кошика</button>
+          </div>
+        {% empty %}
+          <!-- If no products passed in context, optionally show samples -->
+        {% endfor %}
+      </div>
+    </div>
+
+  {% else %}
+    <div class="empty">Кошик порожній — додайте продукти зі сторінки товару.</div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const c = cookies[i].trim();
+        if (c.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(c.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  // Quantity controls + update
+  document.querySelectorAll('.cart-item').forEach(container => {
+    const pid = container.dataset.pid;
+    const inp = container.querySelector('.cart-qty');
+    container.querySelector('.qty-incr').addEventListener('click', () => {
+      inp.value = Math.max(0, parseInt(inp.value||0) + 100);
+      updateItem(pid, inp.value);
+    });
+    container.querySelector('.qty-decr').addEventListener('click', () => {
+      inp.value = Math.max(0, parseInt(inp.value||0) - 100);
+      updateItem(pid, inp.value);
+    });
+    inp.addEventListener('change', () => {
+      const v = Math.max(0, parseInt(inp.value||0));
+      inp.value = v;
+      updateItem(pid, v);
+    });
+  });
+
+  async function updateItem(product_id, quantity){
+    const data = new FormData();
+    data.append('product_id', product_id);
+    data.append('quantity', quantity);
+    const res = await fetch("{% url 'update_cart_item' %}", {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrftoken},
+      body: data
+    });
+    const json = await res.json();
+    if (!json.ok) {
+      alert(json.error || 'Помилка оновлення');
+      return;
+    }
+    // Simple approach: reload page to refresh totals and UI
+    location.reload();
+  }
+
+  document.getElementById('checkoutBtn')?.addEventListener('click', async () => {
+    const res = await fetch("{% url 'cart_checkout' %}", {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrftoken}
+    });
+    const json = await res.json();
+    if (json.ok && json.url) {
+      window.location.href = json.url;
+    } else {
+      alert(json.error || 'Не вдалося ініціювати оплату.');
+    }
+  });
+
+  // recommended add buttons
+  document.querySelectorAll('.rec-add').forEach(b => {
+    b.addEventListener('click', async () => {
+      const id = b.dataset.id, price = b.dataset.price || 0;
+      const data = new FormData();
+      data.append('product_id', id);
+      data.append('name', b.closest('.rec-card').querySelector('div').innerText || 'Товар');
+      data.append('price', Math.round(parseFloat(price || 0)));
+      data.append('currency', 'UAH');
+      data.append('quantity', 100);
+      data.append('image', b.closest('.rec-card').querySelector('img').src || '');
+      const res = await fetch("{% url 'add_to_cart' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrftoken},
+        body: data
+      });
+      const json = await res.json();
+      if (json.ok) {
+        alert('Додано в кошик');
+        window.location.reload();
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}
