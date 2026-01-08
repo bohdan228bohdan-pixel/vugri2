@@ -404,3 +404,7 @@ body{
 .social-title{ color:var(--white); font-weight:900; }
 .social-sub{ color:var(--muted); font-size:13px; margin-top:2px; }
 .social-go{ color:var(--muted); font-weight:800; }
+
+/* невеликі стилі для cart кнопки та кнопки оформлення */
+.cart-link { color: #fff; margin-left: 10px; font-weight:700; }
+.btn-danger { background:#e74c3c; border-color: #e74c3c; color:#fff; }

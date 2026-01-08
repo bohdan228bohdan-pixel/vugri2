@@ -1,49 +1,51 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ product.name }} — Dieller Bus{% endblock %}
-
 {% block head_extra %}
 <style>
-/* Minimal product layout tweaks */
-.product-page { padding: 32px 0; }
-.product-img { width:100%; border-radius:12px; object-fit:cover; }
-.product-meta { padding-left: 28px; }
-.badge-qty { display:inline-block; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:8px; color:var(--muted); }
+.product-page { padding: 28px 0; }
+.product-img-wrap { max-width: 560px; max-height: 560px; overflow:hidden; border-radius:12px; background:#faf9f6; }
+.product-img { display:block; width:100%; height:100%; object-fit:contain; }
+.thumbs { margin-top:10px; display:flex; gap:8px; }
+.thumb { width:56px; height:56px; border-radius:6px; overflow:hidden; cursor:pointer; border:1px solid rgba(0,0,0,0.06); background:#fff }
+.thumb img{ width:100%; height:100%; object-fit:cover }
 .btn-add { background:var(--accent-red); color:#fff; border:none; padding:10px 18px; border-radius:8px; font-weight:800 }
-.qty-controls { display:inline-flex; gap:8px; align-items:center }
-.qty-controls button { background:transparent; border:1px solid rgba(255,255,255,0.06); color:#fff; padding:6px 10px; border-radius:6px }
-.qty-controls input { width:68px; text-align:center; padding:6px; border-radius:6px; background:#0f0f0f; border:1px solid rgba(255,255,255,0.06); color:#fff }
+.qty-input { width:90px; text-align:center; background:#0f0f0f; color:#fff; border:1px solid rgba(255,255,255,0.06); padding:6px; border-radius:6px }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container product-page">
-  <div class="row g-4">
+  <div class="row">
     <div class="col-md-6">
-      <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img">
+      <div class="product-img-wrap">
+        <img id="mainImage" src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img">
+      </div>
+      <div class="thumbs">
+        <div class="thumb"><img src="{{ product.image.url }}" alt=""></div>
+      </div>
     </div>
 
-    <div class="col-md-6 product-meta">
+    <div class="col-md-6">
       <h1 style="font-weight:900">{{ product.name }}</h1>
-      <div style="margin:10px 0; color:var(--muted)">{{ product.description }}</div>
+      <div style="color:var(--muted)">{{ product.description }}</div>
 
       <div style="font-size:28px;font-weight:900;margin:18px 0;">{{ product.price_per_100g }} грн / 100г</div>
 
       <div style="display:flex;align-items:center;gap:12px;">
-        <div class="qty-controls" aria-label="Quantity">
-          <button id="qty-decr" type="button" aria-label="Зменшити">−</button>
-          <input id="qty" type="number" min="100" step="100" value="100" aria-label="Кількість (гр)"/>
-          <button id="qty-incr" type="button" aria-label="Збільшити">+</button>
+        <div>
+          <button id="qty-decr" class="btn btn-outline-light" type="button">−</button>
+          <!-- quantity as units (1 = 100g). Default 1, step 1 -->
+          <input id="qty" class="qty-input" type="number" value="1" min="1" step="1" />
+          <button id="qty-incr" class="btn btn-outline-light" type="button">+</button>
         </div>
 
-        <button id="addToCart" class="btn-add" data-product-id="{{ product.id }}" aria-label="Додати в кошик">До кошика</button>
+        <button id="addToCart" class="btn-add" data-product-id="{{ product.id }}">До кошика</button>
       </div>
 
       <div id="product-msg" style="margin-top:12px;color:var(--muted)"></div>
 
       <hr style="border-color: rgba(255,255,255,0.04)">
-
       <h4>Опис</h4>
       <p style="color:var(--muted)">{{ product.description }}</p>
     </div>
@@ -54,7 +56,6 @@
 {% block scripts %}
 <script>
 (function(){
-  // CSRF cookie helper
   function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -72,34 +73,31 @@
   const csrftoken = getCookie('csrftoken');
 
   const qtyInput = document.getElementById('qty');
-  document.getElementById('qty-incr').addEventListener('click', () => {
-    // step 100g (example)
-    const v = Math.max(100, parseInt(qtyInput.value || '100') + parseInt(qtyInput.step || '100'));
-    qtyInput.value = v;
-  });
-  document.getElementById('qty-decr').addEventListener('click', () => {
-    const step = parseInt(qtyInput.step || '100');
-    const v = Math.max(step, parseInt(qtyInput.value || String(step)) - step);
-    qtyInput.value = v;
-  });
+  document.getElementById('qty-incr').addEventListener('click', () => qtyInput.value = Math.max(1, parseInt(qtyInput.value||1) + 1));
+  document.getElementById('qty-decr').addEventListener('click', () => qtyInput.value = Math.max(1, parseInt(qtyInput.value||1) - 1));
 
-  document.getElementById('addToCart').addEventListener('click', async (e) => {
-    const btn = e.currentTarget;
-    const productId = btn.dataset.productId;
-    const quantity = parseInt(qtyInput.value || '100');
+  document.querySelectorAll('.thumb').forEach(t => t.addEventListener('click', () => {
+    const img = t.querySelector('img');
+    if (img) document.getElementById('mainImage').src = img.src;
+  }));
+
+  document.getElementById('addToCart').addEventListener('click', async function(){
+    const btn = this;
+    const pid = btn.dataset.productId;
+    const qty = Math.max(1, parseInt(qtyInput.value || 1));
 
     const data = new FormData();
-    data.append('product_id', productId);
+    data.append('product_id', pid);
     data.append('name', '{{ product.name|escapejs }}');
-    // convert price per 100g -> price per 100g integer (UAH)
+    // price is per 100g major units (UAH)
     data.append('price', Math.round(parseFloat('{{ product.price_per_100g }}' || '0')));
     data.append('currency', 'UAH');
-    data.append('quantity', quantity);
+    // send quantity as units (1 = 100g)
+    data.append('quantity', qty);
     data.append('image', '{{ product.image.url }}');
 
     btn.disabled = true;
     btn.textContent = 'Додаю...';
-
     try {
       const res = await fetch("{% url 'add_to_cart' %}", {
         method: 'POST',
@@ -108,12 +106,8 @@
       });
       const json = await res.json();
       if (json.ok) {
-        document.getElementById('product-msg').textContent = 'Товар додано в кошик';
-        // update header/cart count if exists
-        const cels = document.querySelectorAll('#cart-count');
-        cels.forEach(el => el.textContent = json.cart_count);
-        // open cart page in new tab (optional) or show modal
-        // window.location.href = "{% url 'cart' %}";
+        document.getElementById('product-msg').textContent = 'Додано в кошик';
+        document.querySelectorAll('#cart-count').forEach(el => el.textContent = json.cart_count);
       } else {
         document.getElementById('product-msg').textContent = json.error || 'Помилка додавання';
       }

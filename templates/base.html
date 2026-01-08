@@ -20,6 +20,7 @@
     <nav class="site-nav">
       <a href="/">Головна</a>
       <a href="/products/">Каталог</a>
+      <a href="{% url 'cart' %}" class="cart-link">Кошик{% if cart_count %} ({{ cart_count }}){% endif %}</a>
       <a href="/about/">Про нас</a>
       <a href="{% url 'contact' %}">Контакти</a>
 
@@ -33,7 +34,6 @@
           </button>
         </form>
       {% else %}
-        <a href="{% url 'login' %}">Вхід</a>
         <a href="{% url 'register' %}" class="cta">Реєстрація</a>
       {% endif %}
     </nav>

@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 
 import stripe
 
@@ -24,7 +24,7 @@ stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
 
 SAMPLES = {
     1: {
-        'name': 'Вугор',
+        'name': 'Вуго��',
         'description': 'Свіжий вугор — ідеальний для запікання, смаження та копчення.',
         'price_per_100g': '250.00',
         'image': '/static/images/png/vugor.png'
@@ -45,10 +45,6 @@ SAMPLES = {
 
 
 def _product_from_db_or_sample(product_id):
-    """
-    Returns tuple: (product_obj_for_templates, db_product_or_none)
-    product_obj_for_templates has: id, name, description, price_per_100g, image.url
-    """
     prod = SeafoodProduct.objects.filter(id=product_id).first()
     if prod:
         img = None
@@ -344,6 +340,7 @@ def add_to_cart(request):
     """
     POST params: product_id, name, price (int major units), currency, quantity, image (optional)
     Returns JSON {ok: True, cart_count: N}
+    Backwards-compatible: if frontend sends grams (100, 200...) convert to units (100g->1)
     """
     product_id = request.POST.get('product_id')
     if not product_id:
@@ -355,10 +352,19 @@ def add_to_cart(request):
     except (TypeError, ValueError):
         price = 0
     currency = request.POST.get('currency', 'UAH')
+
+    # parse quantity robustly: accept units (1,2,..) or grams (100,200,..)
+    raw_q = request.POST.get('quantity', '1')
     try:
-        quantity = int(request.POST.get('quantity', 1))
+        q = int(float(raw_q))
     except (TypeError, ValueError):
-        quantity = 1
+        q = 1
+
+    if q >= 10 and q % 100 == 0:
+        quantity = max(1, q // 100)
+    else:
+        quantity = max(1, q)
+
     image = request.POST.get('image', '')
 
     cart = _get_cart(request)
@@ -386,6 +392,8 @@ def cart(request):
 def cart_view(request):
     """
     Renders cart page. Context: cart dict and totals by currency.
+    Also passes first_pid (id першого товару в кошику) щоб кнопка 'Оформити замовлення'
+    могла перенаправити на order_form для простого кейсу.
     """
     cart = _get_cart(request)
     totals = {}
@@ -394,26 +402,32 @@ def cart_view(request):
         totals.setdefault(cur, 0)
         totals[cur] += int(item.get('price', 0)) * int(item.get('quantity', 0))
 
-    # Optional: recommended products to show under cart (example: first 6 SeafoodProduct)
+    # recommended products
     recommended = []
     try:
         recommended = SeafoodProduct.objects.all()[:6]
     except Exception:
         recommended = []
 
+    # визначаємо перший product_id у кошику (str keys)
+    first_pid = None
+    for k in cart.keys():
+        first_pid = k
+        break
+
     return render(request, 'cart.html', {
         'cart': cart,
         'totals': totals,
         'cart_count': cart_count(request),
         'products': recommended,
+        'first_pid': first_pid,
     })
 
 
 @require_POST
 def update_cart_item(request):
     """
-    POST: product_id, quantity
-    Returns JSON {ok: True, cart_count: N, totals: {...}}
+    POST: product_id, quantity (units or grams). Returns JSON {ok: True, cart_count: N, totals: {...}}
     """
     product_id = request.POST.get('product_id')
     if not product_id:
@@ -430,6 +444,9 @@ def update_cart_item(request):
     if quantity <= 0:
         del cart[product_id]
     else:
+        # convert grams->units if necessary
+        if quantity >= 10 and quantity % 100 == 0:
+            quantity = max(1, quantity // 100)
         cart[product_id]['quantity'] = quantity
 
     request.session.modified = True
@@ -487,8 +504,14 @@ def checkout_session(request):
         cancel_url=cancel_url,
     )
 
-    # Optionally clear cart after creating session or after webhook confirms payment.
-    # request.session['cart'] = {}
-    # request.session.modified = True
-
     return JsonResponse({'ok': True, 'url': session.url})
+
+
+@require_http_methods(["GET"])
+def clear_cart(request):
+    """
+    Removes 'cart' from session and redirects to cart page.
+    """
+    request.session.pop('cart', None)
+    request.session.modified = True
+    return redirect('cart')
