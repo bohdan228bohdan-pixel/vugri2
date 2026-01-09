@@ -1,216 +1,206 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Оформлення замовлення — {{ product.name }}{% endblock %}
+{% block title %}Оформлення замовлення — VugriUkraine{% endblock %}
 
-{% block content %}
-<form action="{% url 'submit_order' %}" method="post">
-  {% csrf_token %}
-  <input type="hidden" name="product_id" value="{{ product.id }}">
+{% block head_extra %}
+<link rel="preload" href="{% static 'img/ukrposhta.png' %}" as="image">
+<link rel="preload" href="{% static 'img/nova_poshta.png' %}" as="image">
+<style>
+/* Centered horizontal checkout — simplified: summary removed, form centered */
+:root{
+  --bg:#080808;
+  --panel:#0f1414;
+  --muted:#9aa0a6;
+  --white:#f7f7f7;
+  --accent:#27d39c;
+  --input-bg:#0b0e0f;
+  --border:rgba(255,255,255,0.04);
+  --radius:12px;
+  --max-w:920px; /* center column width */
+}
 
-  <div class="checkout-wrap">
-    <h1 class="checkout-title">Оформлення замовлення</h1>
-    <p class="checkout-subtitle">Оберіть спосіб отримання замовлення</p>
+/* Page */
+.order-wrap{
+  background:var(--bg);
+  color:var(--muted);
+  padding:56px 18px 80px;
+  min-height:80vh;
+  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+}
 
-    {% if error %}
-      <div style="background:#3b0000;color:#ffc9c9;padding:10px;border-radius:10px;margin:12px 0">
-        {{ error }}
-      </div>
-    {% endif %}
+/* Center container (single column) */
+.center-container{
+  width:100%;
+  max-width:var(--max-w);
+}
 
-    <!-- Служба доставки -->
-    <div class="delivery-grid" id="deliveryGrid">
-      <label class="delivery-card selected">
-        <input type="radio" name="delivery_type" value="ukr_branch" checked>
-        <div>
-          <p class="d-title">Укрпошта</p>
-          <p class="d-desc">Доставка протягом 1–3 днів</p>
-          <div class="d-price">безкоштовно</div>
-        </div>
-        <div style="opacity:.9;color:var(--muted)">📍</div>
-      </label>
+/* Header */
+.order-title{ color:var(--white); font-size:28px; font-weight:900; margin:0 0 6px; text-align:center; }
+.order-sub{ color:var(--muted); margin:0 0 20px; text-align:center; }
 
-      <label class="delivery-card">
-        <input type="radio" name="delivery_type" value="nova_branch">
-        <div>
-          <p class="d-title">У відділення Нова пошта</p>
-          <p class="d-desc">Доставка протягом 1–3 днів</p>
-          <div class="d-price">від 60 грн.</div>
-        </div>
-        <div style="opacity:.9;color:var(--muted)">✣</div>
-      </label>
+/* Panel (full width of center container) */
+.panel{ background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent); border-radius:var(--radius); padding:22px; border:1px solid var(--border); box-shadow:0 10px 28px rgba(0,0,0,0.6); }
 
-      <label class="delivery-card">
-        <input type="radio" name="delivery_type" value="nova_courier">
-        <div>
-          <p class="d-title">Кур'єром Нова пошта</p>
-          <p class="d-desc">Доставка протягом 1–3 днів</p>
-          <div class="d-price">від 95 грн.</div>
-        </div>
-        <div style="opacity:.9;color:var(--muted)">✣</div>
-      </label>
-    </div>
+/* Delivery list (cards stacked) */
+.delivery-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:18px; }
+.delivery-card{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:14px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.03);
+  cursor:pointer; background:rgba(255,255,255,0.005);
+}
+.delivery-card.active{ border-color:var(--accent); box-shadow:0 0 0 4px rgba(39,211,156,0.06); }
+.delivery-left{ display:flex; gap:12px; align-items:flex-start; }
+.delivery-logo{ width:52px; height:52px; object-fit:contain; border-radius:8px; }
+.delivery-info .title{ color:var(--white); font-weight:800; margin-bottom:6px; }
+.delivery-info .desc{ color:var(--muted); font-size:13px; line-height:1.2; }
 
-    <!-- Дані доставки -->
-    <h2 class="section-title">Дані доставки</h2>
-    <p class="section-hint">Введіть адресу доставки</p>
+/* Form rows horizontal */
+.fields{ margin-top:12px; display:flex; flex-direction:column; gap:12px; }
+.row{ display:flex; gap:12px; }
+.col{ flex:1; }
+.field-label{ display:block; color:var(--muted); font-weight:700; margin-bottom:8px; font-size:13px; }
+.input{ width:100%; padding:12px 14px; border-radius:8px; background:var(--input-bg); color:var(--white); border:1px solid var(--border); outline:none; font-size:14px; }
 
-    <div class="form-grid">
-      <div class="two-cols">
-        <div class="form-row">
-          <label for="region">Область*</label>
-          <input id="region" name="region" type="text" placeholder="Волинська" required>
-        </div>
-        <div class="form-row">
-          <label for="city">Місто*</label>
-          <input id="city" name="city" type="text" placeholder="Луцьк" required>
-        </div>
-      </div>
+/* Centered CTA */
+.cta-wrap{ display:flex; justify-content:center; margin-top:22px; }
+.btn-cta{ background: linear-gradient(90deg,var(--accent), #1fb383); color:#fff; padding:14px 72px; border-radius:36px; font-weight:900; border:none; cursor:pointer; box-shadow:0 12px 32px rgba(0,0,0,0.6); }
 
-      <!-- Для відділення -->
-      <div class="form-row" id="branchRow">
-        <label for="branch">Відділення / індекс / адреса відділення*</label>
-        <input id="branch" name="branch" type="text" placeholder="№12 або 45623, вул..." required>
-      </div>
+/* Helper small */
+.small-muted{ color:var(--muted); font-size:13px; text-align:left; }
 
-      <!-- Для курʼєра -->
-      <div class="form-row" id="addressRow" style="display:none;">
-        <label for="address">Адреса доставки (вулиця, будинок, кв.)*</label>
-        <input id="address" name="address" type="text" placeholder="вул. Володимирська, 62">
-      </div>
-
-      <div class="two-cols">
-        <div class="form-row">
-          <label for="quantity">Кількість (г)*</label>
-          <input id="quantity" name="quantity" type="number" min="100" step="100" value="100" required>
-        </div>
-        <div class="form-row">
-          <label>Сума</label>
-          <input type="text" value="" id="total-price-view" readonly>
-        </div>
-      </div>
-
-      <!-- hidden postal for backend -->
-      <input type="hidden" name="postal" id="postalHidden" value="ukr">
-    </div>
-
-    <!-- Контактні дані -->
-    <h2 class="section-title">Контактні дані</h2>
-    <p class="section-hint">Заповніть контактні дані отримувача</p>
-
-    <div class="form-grid">
-      <div class="two-cols">
-        <div class="form-row">
-          <label for="first_name">Ім'я*</label>
-          <input id="first_name" name="first_name" type="text" required>
-        </div>
-        <div class="form-row">
-          <label for="last_name">Прізвище*</label>
-          <input id="last_name" name="last_name" type="text" required>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <label for="middle_name">По батькові*</label>
-        <input id="middle_name" name="middle_name" type="text" required>
-      </div>
-
-      <div class="two-cols">
-        <div class="form-row">
-          <label for="email">E-mail*</label>
-          <input id="email" name="email" type="email" required>
-        </div>
-        <div class="form-row">
-          <label for="phone">Телефон*</label>
-          <input id="phone" name="phone" type="tel" placeholder="+380..." required>
-        </div>
-      </div>
-
-      <div style="color:var(--muted);font-size:12px">
-        *Поле обов'язкове для заповнення
-      </div>
-    </div>
-  </div>
-
-  <!-- sticky bottom button -->
-  <div class="checkout-bottom">
-    <div class="checkout-bottom-inner">
-      <button type="submit" class="big-continue">Продовжити</button>
-    </div>
-  </div>
-</form>
+/* Remove summary area entirely on small screens too */
+@media (max-width:720px){
+  .row{ flex-direction:column; }
+  .delivery-logo{ width:44px; height:44px; }
+  .btn-cta{ width:100%; padding:12px; border-radius:10px; }
+}
+</style>
 {% endblock %}
 
-{% block scripts %}
+{% block content %}
+<main class="order-wrap">
+  <div class="center-container">
+    <h1 class="order-title">Оформлення замовлення</h1>
+    <p class="order-sub">Оберіть спосіб отримання замовлення та заповніть дані нижче</p>
+
+    <section class="panel" aria-labelledby="form-heading">
+      <h2 id="form-heading" style="color:var(--white); margin:0 0 12px; text-align:center">Спосіб отримання</h2>
+
+      <form method="post" id="orderForm" novalidate>
+        {% csrf_token %}
+
+        <!-- Delivery options (cards) -->
+        <div class="delivery-list" id="deliveryList" role="radiogroup" aria-label="Способи доставки">
+          <label class="delivery-card {% if posted.delivery_method == 'ukrposhta' or not posted.delivery_method %}active{% endif %}" data-value="ukrposhta" role="radio" aria-checked="{% if posted.delivery_method == 'ukrposhta' or not posted.delivery_method %}true{% else %}false{% endif %}">
+            <div class="delivery-left">
+              <img src="{% static 'img/ukrposhta.png' %}" alt="Ukrposhta" class="delivery-logo" onerror="this.style.display='none'">
+              <div class="delivery-info">
+                <div class="title">Укрпошта</div>
+                <div class="desc">Доставка протягом 1–3 днів — <strong style="color:var(--white)">безкоштовно</strong></div>
+              </div>
+            </div>
+            <input type="radio" name="delivery_method" value="ukrposhta" style="display:none" {% if posted.delivery_method == 'ukrposhta' or not posted.delivery_method %}checked{% endif %}>
+          </label>
+
+          <label class="delivery-card {% if posted.delivery_method == 'nova_branch' %}active{% endif %}" data-value="nova_branch" role="radio" aria-checked="{% if posted.delivery_method == 'nova_branch' %}true{% else %}false{% endif %}">
+            <div class="delivery-left">
+              <img src="{% static 'img/nova_poshta.png' %}" alt="Nova Poshta" class="delivery-logo" onerror="this.style.display='none'">
+              <div class="delivery-info">
+                <div class="title">У відділенні Нова пошта</div>
+                <div class="desc">Доставка протягом 1–3 днів — <strong style="color:var(--white)">від 60 грн.</strong></div>
+              </div>
+            </div>
+            <input type="radio" name="delivery_method" value="nova_branch" style="display:none" {% if posted.delivery_method == 'nova_branch' %}checked{% endif %}>
+          </label>
+
+          <label class="delivery-card {% if posted.delivery_method == 'nova_courier' %}active{% endif %}" data-value="nova_courier" role="radio" aria-checked="{% if posted.delivery_method == 'nova_courier' %}true{% else %}false{% endif %}">
+            <div class="delivery-left">
+              <img src="{% static 'img/nova_poshta.png' %}" alt="Nova Poshta courier" class="delivery-logo" onerror="this.style.display='none'">
+              <div class="delivery-info">
+                <div class="title">Кур'єром Нова пошта</div>
+                <div class="desc">Доставка протягом 1–3 днів — <strong style="color:var(--white)">від 95 грн.</strong></div>
+              </div>
+            </div>
+            <input type="radio" name="delivery_method" value="nova_courier" style="display:none" {% if posted.delivery_method == 'nova_courier' %}checked{% endif %}>
+          </label>
+        </div>
+
+        <!-- Delivery fields horizontally -->
+        <h3 style="color:var(--white); margin:12px 0">Дані доставки</h3>
+
+        {% if errors %}
+          <div style="background:#2b1616; padding:12px; border-radius:8px; margin-bottom:12px; color:#ffd6d6;">
+            <ul style="margin:0; padding-left:18px;">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+          </div>
+        {% endif %}
+
+        <div class="fields">
+          <div class="row">
+            <div class="col">
+              <label class="field-label">Область*</label>
+              <input class="input" name="region" placeholder="Волинська" value="{{ posted.region|default:'' }}">
+            </div>
+            <div class="col">
+              <label class="field-label">Місто*</label>
+              <input class="input" name="city" placeholder="Луцьк" value="{{ posted.city|default:'' }}">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label class="field-label">Відділення / Адреса*</label>
+              <input class="input" name="address" placeholder="№12 або вул., буд." value="{{ posted.address|default:'' }}">
+            </div>
+            <div class="col">
+              <label class="field-label">Кількість (г)*</label>
+              <input class="input" name="quantity" value="{{ posted.quantity|default:'100' }}">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label class="field-label">E-mail*</label>
+              <input class="input" name="email" value="{{ posted.email|default:'' }}">
+            </div>
+            <div class="col">
+              <label class="field-label">Телефон*</label>
+              <input class="input" name="phone" placeholder="+380..." value="{{ posted.phone|default:'' }}">
+            </div>
+          </div>
+
+          <div class="cta-wrap">
+            <button type="submit" class="btn-cta">Продовжити</button>
+          </div>
+        </div>
+      </form>
+    </section>
+  </div>
+</main>
+
 <script>
-  // highlight selected delivery card
-  (function(){
-    const grid = document.getElementById('deliveryGrid');
-    const cards = Array.from(grid.querySelectorAll('.delivery-card'));
-    const postalHidden = document.getElementById('postalHidden');
-    const branchRow = document.getElementById('branchRow');
-    const addressRow = document.getElementById('addressRow');
-    const branchInput = document.getElementById('branch');
-    const addressInput = document.getElementById('address');
-
-    function applyDelivery(type){
-      // UI select
-      cards.forEach(c => c.classList.remove('selected'));
-      const selected = cards.find(c => c.querySelector('input').checked);
-      if (selected) selected.classList.add('selected');
-
-      // Map to backend fields
-      // ukr_branch -> postal=ukr, needs branch
-      // nova_branch -> postal=nova, needs branch
-      // nova_courier -> postal=nova, needs address instead of branch
-      if (type === 'ukr_branch') {
-        postalHidden.value = 'ukr';
-        branchRow.style.display = '';
-        addressRow.style.display = 'none';
-        branchInput.required = true;
-        addressInput.required = false;
-        addressInput.value = '';
-      } else if (type === 'nova_branch') {
-        postalHidden.value = 'nova';
-        branchRow.style.display = '';
-        addressRow.style.display = 'none';
-        branchInput.required = true;
-        addressInput.required = false;
-        addressInput.value = '';
-      } else if (type === 'nova_courier') {
-        postalHidden.value = 'nova';
-        branchRow.style.display = 'none';
-        addressRow.style.display = '';
-        branchInput.required = false;
-        addressInput.required = true;
-        branchInput.value = '';
-      }
-    }
-
-    grid.addEventListener('change', (e) => {
-      if (e.target && e.target.name === 'delivery_type') {
-        applyDelivery(e.target.value);
-      }
+document.addEventListener('DOMContentLoaded', function(){
+  // make delivery cards clickable and sync radios
+  const cards = document.querySelectorAll('.delivery-card');
+  cards.forEach(card=>{
+    card.addEventListener('click', function(){
+      cards.forEach(c=>c.classList.remove('active'));
+      card.classList.add('active');
+      const radio = card.querySelector('input[type=radio]');
+      if(radio){ radio.checked = true; radio.dispatchEvent(new Event('change')); }
     });
+  });
 
-    // init
-    const checked = grid.querySelector('input[name="delivery_type"]:checked');
-    applyDelivery(checked ? checked.value : 'ukr_branch');
-  })();
-
-  // price calc
-  (function(){
-    const qty = document.getElementById('quantity');
-    const totalView = document.getElementById('total-price-view');
-
-    function calc(){
-      const q = parseInt(qty.value||0,10);
-      const price100 = parseFloat('{{ product.price_per_100g }}') || 0;
-      const sum = Math.round((q/100)*price100*100)/100;
-      totalView.value = sum.toFixed(2) + ' грн';
-    }
-    qty.addEventListener('input', calc);
-    calc();
-  })();
+  // remove validation coloring on input
+  const form = document.getElementById('orderForm');
+  if(form){
+    form.querySelectorAll('input, textarea, select').forEach(inp=>{
+      inp.addEventListener('input', ()=> inp.style.borderColor = '');
+    });
+  }
+});
 </script>
 {% endblock %}

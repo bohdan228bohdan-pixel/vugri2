@@ -51,4 +51,5 @@ urlpatterns = [
     # Favorites
     path('favorites/', seafood_views.favorites_view, name='favorites'),
     path('favorites/toggle/', seafood_views.toggle_favorite, name='toggle_favorite'),
+
 ]

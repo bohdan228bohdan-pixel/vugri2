@@ -867,3 +867,96 @@ def product_create(request):
         return redirect('product_details', product_id=prod.id)
 
     return render(request, 'product_create.html')
+ 
+from django.shortcuts import render, redirect
+from django.utils import timezone
+from django.urls import reverse
+import random
+
+def checkout_view(request):
+    """
+    Показує форму оформлення. При POST валідовано — зберігає в сесії last_order і редіректить на success.
+    Використовує session['cart'] якщо є, або параметр product_id (GET) для одиночного товару.
+    """
+    cart = request.session.get('cart')  # очікується список dict {'id','name','price','quantity'}
+    product = None
+    total_price = 0.0
+
+    if cart:
+        for it in cart:
+            total_price += float(it.get('price', 0)) * int(it.get('quantity', 1))
+    else:
+        pid = request.GET.get('product_id')
+        if pid:
+            try:
+                from .models import SeafoodProduct
+                prod = SeafoodProduct.objects.filter(id=pid).first()
+                if prod:
+                    product = {
+                        'id': prod.id,
+                        'name': prod.name,
+                        'price': float(getattr(prod, 'price_per_100g', 0)),
+                    }
+                    total_price = product['price']
+            except Exception:
+                product = None
+
+    errors = []
+    posted = {}
+
+    if request.method == 'POST':
+        posted['full_name'] = request.POST.get('full_name', '').strip()
+        posted['phone'] = request.POST.get('phone', '').strip()
+        posted['email'] = request.POST.get('email', '').strip()
+        posted['delivery_method'] = request.POST.get('delivery_method', 'courier')
+        posted['address'] = request.POST.get('address', '').strip()
+        posted['payment_method'] = request.POST.get('payment_method', 'card')
+        posted['comment'] = request.POST.get('comment', '').strip()
+        posted['agree'] = request.POST.get('agree')
+
+        # Проста валідація
+        if not posted['full_name']:
+            errors.append("Вкажіть ім'я.")
+        if not posted['phone']:
+            errors.append("Вкажіть телефон.")
+        if not posted['agree']:
+            errors.append("Підтвердіть згоду з умовами.")
+
+        if not errors:
+            order_id = f"VG{timezone.now().strftime('%Y%m%d')}{random.randint(1000,9999)}"
+            request.session['last_order'] = {
+                'order_id': order_id,
+                'created': timezone.now().isoformat(),
+                'full_name': posted['full_name'],
+                'phone': posted['phone'],
+                'email': posted['email'],
+                'delivery_method': posted['delivery_method'],
+                'address': posted['address'],
+                'payment_method': posted['payment_method'],
+                'comment': posted['comment'],
+                'total': "{:.2f}".format(total_price),
+                'items': cart or ([product] if product else []),
+            }
+            # опціонально очистити кошик:
+            # request.session['cart'] = []
+            return redirect(reverse('checkout_success'))
+        # якщо є помилки — покажемо форму з помилками
+
+    context = {
+        'cart': cart,
+        'product': product,
+        'total_price': "{:.2f}".format(total_price),
+        'errors': errors,
+        'posted': posted,
+    }
+    return render(request, 'checkout.html', context)
+
+
+def checkout_success(request):
+    """
+    Показує сторінку-підтвердження. Якщо в сесії немає last_order — редірект на products.
+    """
+    last = request.session.get('last_order')
+    if not last:
+        return redirect(reverse('products'))
+    return render(request, 'checkout_success.html', {'order': last, 'order_id': last.get('order_id')})
