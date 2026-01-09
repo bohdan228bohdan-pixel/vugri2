@@ -1,29 +1,31 @@
 from django.contrib import admin
-from .models import SeafoodProduct, Order, EmailVerification, Favorite, Review
+from django.contrib.admin.sites import AlreadyRegistered
 
-# Register existing models if not already registered
-try:
-    admin.site.register(SeafoodProduct)
-except Exception:
-    pass
+from .models import (
+    SeafoodProduct,
+    Order,
+    EmailVerification,
+    Favorite,
+    Review,
+    ProductImage,
+)
 
-try:
-    admin.site.register(Order)
-except Exception:
-    pass
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1
+    fields = ('image', 'alt', 'is_main')
+    readonly_fields = ()
 
-try:
-    admin.site.register(EmailVerification)
-except Exception:
-    pass
+@admin.register(SeafoodProduct)
+class SeafoodProductAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'price_per_100g')
+    inlines = [ProductImageInline]
 
-@admin.register(Favorite)
-class FavoriteAdmin(admin.ModelAdmin):
-    list_display = ('user', 'product', 'created_at')
-    search_fields = ('user__username', 'product__name')
 
-@admin.register(Review)
-class ReviewAdmin(admin.ModelAdmin):
-    list_display = ('product', 'user', 'rating', 'created_at')
-    list_filter = ('rating', 'created_at')
-    search_fields = ('user__username', 'product__name', 'comment')
+# Register other models safely (skip if already registered)
+for mdl in (Order, EmailVerification, Favorite, Review, ProductImage):
+    try:
+        admin.site.register(mdl)
+    except AlreadyRegistered:
+        # model already registered (e.g. during autoreload) — skip
+        pass

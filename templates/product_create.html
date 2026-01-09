@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div style="max-width:800px;margin:28px auto;color:var(--white)">
+  <h1>Додати товар</h1>
+
+  {% if error %}
+    <div style="color:#ffb3b3">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div style="margin-top:12px">
+      <label>Назва</label><br>
+      <input type="text" name="name" value="{{ form.name }}" style="width:100%;padding:8px;border-radius:6px">
+    </div>
+
+    <div style="margin-top:12px">
+      <label>Опис</label><br>
+      <textarea name="description" rows="4" style="width:100%;padding:8px;border-radius:6px">{{ form.description }}</textarea>
+    </div>
+
+    <div style="margin-top:12px">
+      <label>Ціна (за 100г)</label><br>
+      <input type="text" name="price_per_100g" value="{{ form.price_per_100g }}" style="width:200px;padding:8px;border-radius:6px">
+    </div>
+
+    <div style="margin-top:12px">
+      <label>Завантажити фото (можна кілька)</label><br>
+      <input type="file" name="images" accept="image/*" multiple>
+    </div>
+
+    <div style="margin-top:12px">
+      <button class="btn-action" type="submit">Зберегти товар</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -97,3 +97,24 @@ class Review(models.Model):
 
     def __str__(self):
         return f'Review {self.rating} by {self.user} for {self.product}'
+    
+    from django.conf import settings
+    from django.db import models
+
+# Якщо SeafoodProduct вже визначений у цьому файлі, не додавай його знову.
+# Додаємо модель для зберігання кількох зображень на товар:
+
+class ProductImage(models.Model):
+    product = models.ForeignKey('seafood.SeafoodProduct', on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='products/%Y/%m/', blank=False, null=False)
+    alt = models.CharField(max_length=200, blank=True)
+    is_main = models.BooleanField(default=False)  # можна обрати головне фото
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_main', 'created_at']
+        verbose_name = 'Зображення продукту'
+        verbose_name_plural = 'Зображення продуктів'
+
+    def __str__(self):
+        return f'{self.product} — image #{self.id}'

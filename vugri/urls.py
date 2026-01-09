@@ -16,6 +16,18 @@ urlpatterns = [
     path('order/<int:product_id>/', seafood_views.order_form, name='order_form'),
     path('submit_order/', seafood_views.submit_order, name='submit_order'),
     path('fetch_branches/', seafood_views.fetch_postal_branches, name='fetch_branches'),
+    path('product/1/', seafood_views.product_details, kwargs={'product_id': 1}, name='product_1'),
+    path('product/2/', seafood_views.product_details, kwargs={'product_id': 2}, name='product_2'),
+    path('product/3/', seafood_views.product_details, kwargs={'product_id': 3}, name='product_3'),
+    path('product/4/', seafood_views.product_details, kwargs={'product_id': 4}, name='product_4'),
+    path('product/5/', seafood_views.product_details, kwargs={'product_id': 5}, name='product_5'),
+    path('product/6/', seafood_views.product_details, kwargs={'product_id': 6}, name='product_6'),
+    path('product/7/', seafood_views.product_details, kwargs={'product_id': 7}, name='product_7'),
+    path('product/8/', seafood_views.product_details, kwargs={'product_id': 8}, name='product_8'),
+    path('product/9/', seafood_views.product_details, kwargs={'product_id': 9}, name='product_9'),
+    path('product/10/', seafood_views.product_details, kwargs={'product_id': 10}, name='product_10'),
+    path('product/11/', seafood_views.product_details, kwargs={'product_id': 11}, name='product_11'),
+    path('product/12/', seafood_views.product_details, kwargs={'product_id': 12}, name='product_12'),
 
     # Auth / registration / profile
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),

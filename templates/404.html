@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}404 — Сторінку не знайдено — VugriUkraine{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:80px auto;text-align:center;color:var(--muted)">
+  <h1 style="font-size:40px;color:var(--white);margin-bottom:8px">404 — Сторінку не знайдено</h1>
+  <p style="margin-bottom:12px">Вибачте, цього товару або сторінки не існує.</p>
+  <p style="margin-bottom:18px">
+    <a href="{% url 'products' %}" class="btn btn-primary" style="text-decoration:none;padding:10px 16px;border-radius:8px;">Повернутись до каталогу</a>
+    <a href="{% url 'homepage' %}" class="btn btn-outline" style="text-decoration:none;padding:10px 16px;border-radius:8px;margin-left:8px;">На головну</a>
+  </p>
+  <p style="color:var(--muted);font-size:13px">Якщо вважаєте, що це помилка — перевірте посилання або зверніться в підтримку.</p>
+</div>
+{% endblock %}
