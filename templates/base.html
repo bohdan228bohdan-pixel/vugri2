@@ -3,73 +3,194 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>{% block title %}VugriUkraine{% endblock %}</title>
 
+  <!-- Global CSS -->
   <link rel="stylesheet" href="{% static 'styles.css' %}">
+  <!-- Mobile overrides -->
+  <link rel="stylesheet" href="{% static 'mobile.css' %}" media="screen and (max-width:980px)">
+
   <style>
-    /* CSS variables used by templates */
+    /* Small safe header styles (fallback if your main CSS is missing) */
     :root{
       --white:#ffffff;
       --muted:#9aa0a6;
+      --accent:#27d39c;
       --accent-red:#e74c3c;
+      --header-bg:#0b0c0d;
+      --container-w:1100px;
     }
-    .site-header{background:#0b0c0d;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.03)}
-    .site-brand{display:flex;align-items:center;gap:12px}
-    .site-nav{display:flex;gap:14px;align-items:center;justify-content:flex-end}
-    .site-nav a{color:var(--muted);text-decoration:none}
-    .site-nav .cta{background:var(--accent-red);color:#fff;padding:8px 12px;border-radius:8px;text-decoration:none}
-    .auth-pill{display:inline-flex;align-items:center;border-radius:999px;overflow:hidden;background:transparent;border:1px solid rgba(255,255,255,0.03)}
-    .auth-pill__left,.auth-pill__right{padding:8px 12px;text-decoration:none;color:var(--white);font-weight:700}
-    .auth-pill__left{background:transparent;color:var(--muted);border-right:1px solid rgba(255,255,255,0.03)}
-    .auth-pill__right{background:linear-gradient(90deg,var(--accent-red),#ff6b57);color:#fff}
-    .cart-link{color:var(--muted);margin-left:8px;font-weight:700}
+
+    .skip-link{ position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden; }
+    .skip-link:focus{left:8px;top:8px;width:auto;height:auto;padding:8px 12px;background:#000;color:#fff;z-index:99999;border-radius:6px;}
+
+    .site-header{
+      background:var(--header-bg);
+      padding:10px 16px;
+      border-bottom:1px solid rgba(255,255,255,0.03);
+      position:sticky;
+      top:0;
+      z-index:10000;
+    }
+    .site-header-inner{
+      max-width:var(--container-w);
+      margin:0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      box-sizing:border-box;
+    }
+    .site-brand{ display:flex; align-items:center; gap:12px; text-decoration:none; color:var(--white); font-weight:800; }
+    .site-brand img{ height:40px; display:block; object-fit:contain; }
+    .site-nav{ display:flex; gap:14px; align-items:center; }
+    .site-nav a{ color:var(--muted); text-decoration:none; padding:8px 10px; border-radius:8px; font-weight:700; }
+    .site-nav a:hover, .site-nav a:focus{ color:var(--white); background: rgba(255,255,255,0.02); outline:none; }
+    .cta{ background:var(--accent-red); color:#fff; padding:8px 12px; border-radius:8px; text-decoration:none; font-weight:800; }
+    .mobile-nav-toggle{
+      display:none;
+      background:transparent;
+      border:0;
+      color:var(--white);
+      font-size:22px;
+      padding:8px;
+      cursor:pointer;
+    }
+    .auth-pill{ display:inline-flex; align-items:center; border-radius:999px; overflow:hidden; background:transparent; border:1px solid rgba(255,255,255,0.03); }
+    .auth-pill__left, .auth-pill__right{ padding:7px 10px; text-decoration:none; color:var(--white); font-weight:700; display:inline-block; }
+    .auth-pill__left{ color:var(--muted); border-right:1px solid rgba(255,255,255,0.03); }
+    .auth-pill__right{ background:linear-gradient(90deg,var(--accent-red),#ff6b57); color:#fff; }
+
+    /* Mobile styles */
+    @media (max-width:980px){
+      .mobile-nav-toggle{ display:inline-flex; }
+      .site-nav{
+        display:none;
+        position:fixed;
+        left:0;
+        right:0;
+        top:56px;
+        bottom:0;
+        background:var(--header-bg);
+        flex-direction:column;
+        gap:0;
+        padding:12px;
+        overflow:auto;
+      }
+      .site-nav.open{ display:flex; }
+      .site-nav a{ padding:12px 10px; width:100%; box-sizing:border-box; }
+    }
+
+    /* small helper */
+    .cart-link{ color:var(--muted); margin-left:8px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
   </style>
 
   {% block head_extra %}{% endblock %}
 </head>
 <body>
-  <header class="site-header">
-    <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between">
-      <div class="site-brand">
-        <a href="/"><img src="{% static 'images/png/logo.png' %}" alt="logo" style="height:42px"></a>
-        <div style="color:var(--white);font-weight:800">VugriUkraine</div>
+  <a class="skip-link" href="#content">Пропустити до контенту</a>
+
+  <header class="site-header" role="banner" aria-label="Головна шапка сайту">
+    <div class="site-header-inner">
+      <a class="site-brand" href="/">
+        <img src="{% static 'images/png/logo.png' %}" alt="VugriUkraine">
+        <span>VugriUkraine</span>
+      </a>
+
+      <div style="display:flex;align-items:center;gap:12px">
+        <button id="mobileNavToggle" class="mobile-nav-toggle" aria-expanded="false" aria-controls="siteNav" aria-label="Відкрити меню">☰</button>
+
+        <nav id="siteNav" class="site-nav" aria-label="Головне меню" role="navigation">
+          <a href="/">Головна</a>
+          <a href="/products/">Каталог</a>
+          <a href="/cart/" class="cart-link">Кошик <span id="cart-count">{{ cart_count|default:"0" }}</span></a>
+          <a href="/favorites/">❤ Обране</a>
+          <a href="/about/">Про нас</a>
+          <a href="/contact/">Контакти</a>
+
+          {% if user.is_authenticated %}
+            <a href="/profile/" class="cta" style="margin-left:10px">Профіль</a>
+            <form method="post" action="/logout/" style="display:inline;margin-left:8px">
+              {% csrf_token %}
+              <button type="submit" class="cta" style="background:transparent;border:1px solid rgba(255,255,255,0.12);color:var(--white)">Вийти</button>
+            </form>
+          {% else %}
+            <div class="auth-pill" style="margin-left:10px">
+              <a href="/login/" class="auth-pill__left">Вхід</a>
+              <a href="/register/" class="auth-pill__right">Реєстрація</a>
+            </div>
+          {% endif %}
+        </nav>
       </div>
-
-      <nav class="site-nav">
-        <a href="/">Головна</a>
-        <a href="{% url 'products' %}">Каталог</a>
-        <a href="{% url 'cart' %}" class="cart-link">Кошик <span id="cart-count">{{ cart_count|default:"0" }}</span></a>
-        <a href="{% url 'favorites' %}" class="cart-link" style="margin-left:10px">❤ Обране</a>
-        <a href="{% url 'about' %}">Про нас</a>
-        <a href="{% url 'contact' %}">Контакти</a>
-
-        {% if user.is_authenticated %}
-          <a href="{% url 'profile' %}" class="cta">Профіль</a>
-          <form method="post" action="{% url 'logout' %}" style="display:inline;margin-left:8px">
-            {% csrf_token %}
-            <button type="submit" class="cta" style="background:transparent;border:1px solid rgba(255,255,255,0.12);color:var(--white)">Вийти</button>
-          </form>
-        {% else %}
-          <div class="auth-pill" style="margin-left:10px">
-            <a href="{% url 'login' %}" class="auth-pill__left">Вхід</a>
-            <a href="{% url 'register' %}" class="auth-pill__right">Реєстрація</a>
-          </div>
-        {% endif %}
-      </nav>
     </div>
   </header>
 
-  <main>
+  <main id="content" class="site-main" role="main">
     {% block content %}{% endblock %}
   </main>
 
   <footer style="background:#080808;padding:24px;margin-top:40px;color:var(--muted)">
-    <div style="max-width:1100px;margin:0 auto;display:flex;justify-content:space-between">
+    <div style="max-width:var(--container-w);margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
       <div>© VugriUkraine — Свіжий вугор</div>
       <div>Тел: <strong>+380986666466</strong></div>
     </div>
   </footer>
+
+  <!-- Inline mobile nav behavior (fallback, robust) -->
+  <script>
+  (function(){
+    const toggle = document.getElementById('mobileNavToggle');
+    const nav = document.getElementById('siteNav');
+    if(!toggle || !nav) return;
+
+    // helper to set aria-expanded and body scroll lock
+    function setOpen(isOpen){
+      if(isOpen){
+        nav.classList.add('open');
+        toggle.setAttribute('aria-expanded','true');
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+      } else {
+        nav.classList.remove('open');
+        toggle.setAttribute('aria-expanded','false');
+        document.documentElement.style.overflow = '';
+        document.body.style.overflow = '';
+      }
+    }
+
+    toggle.addEventListener('click', function(e){
+      e.preventDefault();
+      setOpen(!nav.classList.contains('open'));
+    }, {passive:false});
+
+    toggle.addEventListener('touchstart', function(e){
+      e.preventDefault();
+      setOpen(!nav.classList.contains('open'));
+    }, {passive:false});
+
+    // close on Escape
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'Escape' && nav.classList.contains('open')) setOpen(false);
+    });
+
+    // close on outside click (mobile)
+    document.addEventListener('click', function(e){
+      if(!nav.classList.contains('open')) return;
+      if(!nav.contains(e.target) && !toggle.contains(e.target)) setOpen(false);
+    }, {passive:true});
+
+    // close when clicking a link inside nav (good mobile UX)
+    nav.addEventListener('click', function(e){
+      const link = e.target.closest('a');
+      if(!link) return;
+      // allow modifier keys (open in new tab) — only close for normal clicks
+      if(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      // small delay so navigation starts (if internal) then close
+      setTimeout(()=> setOpen(false), 50);
+    });
+  })();
+  </script>
 
   {% block scripts %}{% endblock %}
 </body>

@@ -6,25 +6,29 @@
 {% block head_extra %}
 <link rel="preload" href="{% static 'img/ukrposhta.png' %}" as="image">
 <link rel="preload" href="{% static 'img/nova_poshta.png' %}" as="image">
+
 <style>
-/* Centered horizontal checkout — simplified: summary removed, form centered */
+/* Clean, responsive, dark checkout form — corrected & well-structured */
 :root{
   --bg:#080808;
   --panel:#0f1414;
   --muted:#9aa0a6;
   --white:#f7f7f7;
   --accent:#27d39c;
+  --accent-2:#e91e63;
   --input-bg:#0b0e0f;
   --border:rgba(255,255,255,0.04);
   --radius:12px;
-  --max-w:920px; /* center column width */
+  --container-w:1100px;
+  --gutter:20px;
+  --field-gap:14px;
 }
 
 /* Page */
 .order-wrap{
   background:var(--bg);
   color:var(--muted);
-  padding:56px 18px 80px;
+  padding:48px var(--gutter) 80px;
   min-height:80vh;
   font-family: Inter, "Helvetica Neue", Arial, sans-serif;
   display:flex;
@@ -32,57 +36,138 @@
   align-items:flex-start;
 }
 
-/* Center container (single column) */
+/* Center container */
 .center-container{
   width:100%;
-  max-width:var(--max-w);
+  max-width:var(--container-w);
+  box-sizing:border-box;
 }
 
 /* Header */
-.order-title{ color:var(--white); font-size:28px; font-weight:900; margin:0 0 6px; text-align:center; }
-.order-sub{ color:var(--muted); margin:0 0 20px; text-align:center; }
-
-/* Panel (full width of center container) */
-.panel{ background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent); border-radius:var(--radius); padding:22px; border:1px solid var(--border); box-shadow:0 10px 28px rgba(0,0,0,0.6); }
-
-/* Delivery list (cards stacked) */
-.delivery-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:18px; }
-.delivery-card{
-  display:flex; justify-content:space-between; align-items:center;
-  padding:14px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.03);
-  cursor:pointer; background:rgba(255,255,255,0.005);
+.order-title{
+  color:var(--white);
+  font-size:30px;
+  font-weight:800;
+  margin:0 0 6px;
+  text-align:center;
 }
-.delivery-card.active{ border-color:var(--accent); box-shadow:0 0 0 4px rgba(39,211,156,0.06); }
+.order-sub{
+  color:var(--muted);
+  margin:0 0 22px;
+  text-align:center;
+  font-size:14px;
+}
+
+/* Panel */
+.panel{
+  background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+  border-radius:var(--radius);
+  padding:22px;
+  border:1px solid var(--border);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+}
+
+/* Delivery cards */
+.delivery-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-bottom:18px;
+}
+.delivery-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.03);
+  cursor:pointer;
+  background: rgba(255,255,255,0.005);
+  transition: .12s ease;
+}
+.delivery-card:hover{ transform: translateY(-2px); box-shadow:0 10px 22px rgba(0,0,0,0.45); }
+.delivery-card.active{ border-color: var(--accent); box-shadow:0 0 0 5px rgba(39,211,156,0.06); }
+
 .delivery-left{ display:flex; gap:12px; align-items:flex-start; }
-.delivery-logo{ width:52px; height:52px; object-fit:contain; border-radius:8px; }
-.delivery-info .title{ color:var(--white); font-weight:800; margin-bottom:6px; }
-.delivery-info .desc{ color:var(--muted); font-size:13px; line-height:1.2; }
+.delivery-logo{ width:56px; height:56px; object-fit:contain; border-radius:8px; }
+.delivery-info .title{ color:var(--white); font-weight:800; font-size:16px; margin-bottom:6px; }
+.delivery-info .desc{ color:var(--muted); font-size:13px; line-height:1.3; }
 
-/* Form rows horizontal */
-.fields{ margin-top:12px; display:flex; flex-direction:column; gap:12px; }
-.row{ display:flex; gap:12px; }
-.col{ flex:1; }
-.field-label{ display:block; color:var(--muted); font-weight:700; margin-bottom:8px; font-size:13px; }
-.input{ width:100%; padding:12px 14px; border-radius:8px; background:var(--input-bg); color:var(--white); border:1px solid var(--border); outline:none; font-size:14px; }
+/* Form fields */
+.form-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--field-gap);
+  margin-top:8px;
+}
+.form-row { display:flex; gap:var(--field-gap); }
+.field{
+  display:flex;
+  flex-direction:column;
+}
+.field-label{
+  color:var(--muted);
+  font-weight:700;
+  font-size:13px;
+  margin-bottom:8px;
+}
+.input, textarea, select{
+  width:100%;
+  padding:12px 14px;
+  border-radius:8px;
+  background:var(--input-bg);
+  color:var(--white);
+  border:1px solid var(--border);
+  outline:none;
+  font-size:14px;
+  box-sizing:border-box;
+}
+.input::placeholder{ color: rgba(255,255,255,0.14); }
+textarea.input{ min-height:80px; resize:vertical; }
 
-/* Centered CTA */
+/* Make labels required visually */
+.required::after{ content: " *"; color: var(--accent-2); margin-left:3px; font-weight:700; }
+
+/* Single column for grouped name fields on small screens */
+.names-grid{
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--field-gap);
+  margin-top: var(--field-gap);
+}
+
+/* CTA centered */
 .cta-wrap{ display:flex; justify-content:center; margin-top:22px; }
-.btn-cta{ background: linear-gradient(90deg,var(--accent), #1fb383); color:#fff; padding:14px 72px; border-radius:36px; font-weight:900; border:none; cursor:pointer; box-shadow:0 12px 32px rgba(0,0,0,0.6); }
+.btn-cta{
+  background: linear-gradient(90deg,var(--accent), #1fb383);
+  color:#fff;
+  padding:14px 72px;
+  border-radius:36px;
+  font-weight:900;
+  border:none;
+  cursor:pointer;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+  font-size:16px;
+}
 
-/* Helper small */
-.small-muted{ color:var(--muted); font-size:13px; text-align:left; }
+/* small helper */
+.small-muted{ color:var(--muted); font-size:13px; }
 
-/* Remove summary area entirely on small screens too */
-@media (max-width:720px){
-  .row{ flex-direction:column; }
-  .delivery-logo{ width:44px; height:44px; }
-  .btn-cta{ width:100%; padding:12px; border-radius:10px; }
+/* Responsive */
+@media (max-width:980px){
+  .form-grid{ grid-template-columns: 1fr; }
+  .names-grid{ grid-template-columns: 1fr; }
+  .delivery-logo{ width:48px; height:48px; }
+  .btn-cta{ width:100%; padding:12px 16px; border-radius:10px; }
+  .center-container{ padding:0 12px; }
+  .panel{ padding:18px; }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<main class="order-wrap">
+<main class="order-wrap" role="main">
   <div class="center-container">
     <h1 class="order-title">Оформлення замовлення</h1>
     <p class="order-sub">Оберіть спосіб отримання замовлення та заповніть дані нижче</p>
@@ -93,7 +178,7 @@
       <form method="post" id="orderForm" novalidate>
         {% csrf_token %}
 
-        <!-- Delivery options (cards) -->
+        <!-- Delivery options -->
         <div class="delivery-list" id="deliveryList" role="radiogroup" aria-label="Способи доставки">
           <label class="delivery-card {% if posted.delivery_method == 'ukrposhta' or not posted.delivery_method %}active{% endif %}" data-value="ukrposhta" role="radio" aria-checked="{% if posted.delivery_method == 'ukrposhta' or not posted.delivery_method %}true{% else %}false{% endif %}">
             <div class="delivery-left">
@@ -129,8 +214,8 @@
           </label>
         </div>
 
-        <!-- Delivery fields horizontally -->
-        <h3 style="color:var(--white); margin:12px 0">Дані доставки</h3>
+        <!-- Delivery data -->
+        <h3 style="color:var(--white); margin:14px 0 10px">Дані доставки</h3>
 
         {% if errors %}
           <div style="background:#2b1616; padding:12px; border-radius:8px; margin-bottom:12px; color:#ffd6d6;">
@@ -138,43 +223,53 @@
           </div>
         {% endif %}
 
-        <div class="fields">
-          <div class="row">
-            <div class="col">
-              <label class="field-label">Область*</label>
-              <input class="input" name="region" placeholder="Волинська" value="{{ posted.region|default:'' }}">
-            </div>
-            <div class="col">
-              <label class="field-label">Місто*</label>
-              <input class="input" name="city" placeholder="Луцьк" value="{{ posted.city|default:'' }}">
-            </div>
+        <div class="form-grid">
+          <div class="field">
+            <label class="field-label required">Область</label>
+            <input class="input" name="region" placeholder="Волинська" value="{{ posted.region|default:'' }}" required>
+          </div>
+          <div class="field">
+            <label class="field-label required">Місто</label>
+            <input class="input" name="city" placeholder="Луцьк" value="{{ posted.city|default:'' }}" required>
           </div>
 
-          <div class="row">
-            <div class="col">
-              <label class="field-label">Відділення / Адреса*</label>
-              <input class="input" name="address" placeholder="№12 або вул., буд." value="{{ posted.address|default:'' }}">
-            </div>
-            <div class="col">
-              <label class="field-label">Кількість (г)*</label>
-              <input class="input" name="quantity" value="{{ posted.quantity|default:'100' }}">
-            </div>
+          <div class="field">
+            <label class="field-label required">Відділення / Адреса</label>
+            <input class="input" name="address" placeholder="№12 або вул., буд." value="{{ posted.address|default:'' }}" required>
+          </div>
+          <div class="field">
+            <label class="field-label required">Кількість (г)</label>
+            <input class="input" name="quantity" value="{{ posted.quantity|default:'100' }}" type="number" min="1" required>
           </div>
 
-          <div class="row">
-            <div class="col">
-              <label class="field-label">E-mail*</label>
-              <input class="input" name="email" value="{{ posted.email|default:'' }}">
-            </div>
-            <div class="col">
-              <label class="field-label">Телефон*</label>
-              <input class="input" name="phone" placeholder="+380..." value="{{ posted.phone|default:'' }}">
-            </div>
+          <div class="field">
+            <label class="field-label required">E-mail</label>
+            <input class="input" name="email" type="email" value="{{ posted.email|default:'' }}" required>
           </div>
+          <div class="field">
+            <label class="field-label required">Телефон</label>
+            <input class="input" name="phone" type="tel" placeholder="+380..." value="{{ posted.phone|default:'' }}" required>
+          </div>
+        </div>
 
-          <div class="cta-wrap">
-            <button type="submit" class="btn-cta">Продовжити</button>
+        <!-- Full name fields (three columns on wide, stacked on mobile) -->
+        <div style="margin-top:14px">
+          <label class="field-label">ПІБ</label>
+          <div class="names-grid">
+            <div class="field">
+              <input class="input" name="surname" placeholder="Прізвище" value="{{ posted.surname|default:'' }}">
+            </div>
+            <div class="field">
+              <input class="input" name="name" placeholder="Ім'я" value="{{ posted.name|default:'' }}">
+            </div>
+            <div class="field">
+              <input class="input" name="patronymic" placeholder="По батькові" value="{{ posted.patronymic|default:'' }}">
+            </div>
           </div>
+        </div>
+
+        <div class="cta-wrap">
+          <button type="submit" class="btn-cta">Продовжити</button>
         </div>
       </form>
     </section>
@@ -182,8 +277,9 @@
 </main>
 
 <script>
+/* JS: keep simple and robust */
 document.addEventListener('DOMContentLoaded', function(){
-  // make delivery cards clickable and sync radios
+  // Delivery card click handling — toggles selected class and radio
   const cards = document.querySelectorAll('.delivery-card');
   cards.forEach(card=>{
     card.addEventListener('click', function(){
@@ -194,9 +290,27 @@ document.addEventListener('DOMContentLoaded', function(){
     });
   });
 
-  // remove validation coloring on input
+  // Minimal client-side validation hint: highlight empty required fields
   const form = document.getElementById('orderForm');
   if(form){
+    form.addEventListener('submit', function(e){
+      let firstInvalid = null;
+      form.querySelectorAll('[required]').forEach(function(inp){
+        if(!inp.value || String(inp.value).trim() === ''){
+          inp.style.borderColor = 'rgba(233,30,99,0.9)';
+          if(!firstInvalid) firstInvalid = inp;
+        } else {
+          inp.style.borderColor = '';
+        }
+      });
+      if(firstInvalid){
+        e.preventDefault();
+        firstInvalid.scrollIntoView({behavior:'smooth', block:'center'});
+        firstInvalid.focus({preventScroll:true});
+      }
+    });
+
+    // reset border on input
     form.querySelectorAll('input, textarea, select').forEach(inp=>{
       inp.addEventListener('input', ()=> inp.style.borderColor = '');
     });

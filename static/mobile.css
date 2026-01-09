@@ -1,0 +1,32 @@
+/* mobile.css — мобільні виправлення та оптимізації (мінімальний, безпечний) */
+
+html, body {
+  width:100%;
+  overflow-x:hidden;
+  -webkit-text-size-adjust:100%;
+  -ms-text-size-adjust:100%;
+}
+
+.container, main, .panel {
+  box-sizing:border-box;
+  padding-left:12px;
+  padding-right:12px;
+}
+
+/* mobile nav */
+.mobile-nav-toggle { display:none; }
+@media (max-width:980px){
+  .mobile-nav-toggle { display:inline-flex; }
+  .site-nav { display:none; }
+  .site-nav.open { display:flex; flex-direction:column; gap:0; padding:8px 12px; }
+  .site-nav a { padding:12px 10px; width:100%; box-sizing:border-box; }
+}
+
+/* larger touch targets */
+button, .btn-cta, .cta, .auth-pill__left, .auth-pill__right { touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+
+/* responsive images */
+img { max-width:100%; height:auto; display:block; }
+
+/* ensure header sits above other elements */
+.site-header{ z-index:10000; position:sticky; top:0; }
