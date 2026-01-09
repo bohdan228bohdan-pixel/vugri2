@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST, require_http_methods
 from django.urls import reverse
 from django.templatetags.static import static
+from .models import Favorite, Review
 
 import stripe
 
@@ -51,21 +52,20 @@ SAMPLES = {
 def _product_from_db_or_sample(product_id):
     """
     Return (product_obj_for_templates, db_product_or_none).
-    product_obj_for_templates has attributes: id, name, description, price_per_100g, image.url
+    product_obj.image.url will always be a usable URL (either media URL or static placeholder).
     """
     prod = SeafoodProduct.objects.filter(id=product_id).first()
     if prod:
-        img = None
         try:
-            img = SimpleNamespace(url=prod.image.url)
+            img_url = prod.image.url
         except Exception:
-            img = SimpleNamespace(url=static('images/png/placeholder.png'))
+            img_url = static('images/png/placeholder.png')
         product_obj = SimpleNamespace(
             id=prod.id,
             name=prod.name,
             description=prod.description,
             price_per_100g=str(prod.price_per_100g),
-            image=img,
+            image=SimpleNamespace(url=img_url),
         )
         return product_obj, prod
 
@@ -73,11 +73,8 @@ def _product_from_db_or_sample(product_id):
     if not data:
         return None, None
 
-    image_path = data.get('image')
-    if image_path:
-        image_url = static(image_path)
-    else:
-        image_url = static('images/png/placeholder.png')
+    image_path = data.get('image') or 'images/png/placeholder.png'
+    image_url = static(image_path)
 
     product_obj = SimpleNamespace(
         id=product_id,
@@ -1255,6 +1252,7 @@ def submit_review(request, product_id):
             'login_url': reverse('login') + '?next=' + request.path
         }, status=401)
 
+    import traceback, sys
     try:
         try:
             rating = int(request.POST.get('rating', 0))
@@ -1269,6 +1267,7 @@ def submit_review(request, product_id):
         if not product_obj:
             return JsonResponse({'ok': False, 'error': 'product not found'}, status=404)
 
+        # create DB product if sample
         if db_prod is None:
             try:
                 price_per_100g = Decimal(str(product_obj.price_per_100g))
@@ -1280,6 +1279,7 @@ def submit_review(request, product_id):
                 price_per_100g=price_per_100g,
             )
 
+        # create review
         Review.objects.create(
             user=request.user,
             product=db_prod,
@@ -1288,8 +1288,9 @@ def submit_review(request, product_id):
         )
 
         return JsonResponse({'ok': True, 'message': 'Дякуємо за відгук.'})
-    except Exception as e:
-        # логнемо помилку в консоль (або краще - через logging)
-        import traceback, sys
-        traceback.print_exc(file=sys.stderr)
-        return JsonResponse({'ok': False, 'error': 'server error'}, status=500)
+
+    except Exception:
+        traceback.print_exc()
+        from django.conf import settings
+        tb = traceback.format_exc() if getattr(settings, 'DEBUG', False) else None
+        return JsonResponse({'ok': False, 'error': 'server error', 'traceback': tb}, status=500)
