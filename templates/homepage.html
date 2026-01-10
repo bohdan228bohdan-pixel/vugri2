@@ -24,6 +24,23 @@
                       <a href="/cart/" class="btn btn-outline">Кошик</a>
                       <a href="/contact/" class="btn btn-outline">Контакти</a>
                       <a href="/favorites/" class="btn btn-outline">Обране</a>
+                      {% if user.is_authenticated %}
+  {% if has_chats %}
+    <p style="margin:12px 0;">
+      <a class="btn btn-primary" href="{% url 'my_conversations' %}">
+        Мої чати ({{ chats_count }})
+      </a>
+    </p>
+  {% else %}
+    <p style="margin:12px 0;color:var(--muted);">
+      У вас ще немає чатів — зробіть замовлення, щоб почати спілкування з продавцем.
+    </p>
+  {% endif %}
+{% else %}
+  <p style="margin:12px 0;">
+    <a class="btn btn-outline" href="{% url 'login' %}?next={% url 'my_conversations' %}">Увійти, щоб подивитися чати</a>
+  </p>
+{% endif %}
                   </div>
               </div>
           </div>

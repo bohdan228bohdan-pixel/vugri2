@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<main style="max-width:900px;margin:24px auto;padding:16px;">
+  <h1 style="margin-bottom:12px;">{{ title }}</h1>
+
+  {% if conversations %}
+    <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:10px;">
+      {% for conv in conversations %}
+        <li style="background:#0f1111;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:700;color:#fff">Розмова #{{ conv.id }}</div>
+              {% if conv.order %}
+                <div style="color:var(--muted)">Замовлення #{{ conv.order.id }} — {{ conv.order.product.name }}</div>
+              {% endif %}
+              <div style="color:var(--muted);font-size:13px;">
+                Учасники:
+                {% for u in conv.participants.all %}
+                  {{ u.username }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+            <div>
+              <a class="btn" href="{% url 'chat' conv.id %}">Відкрити чат</a>
+            </div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Чатів немає.</p>
+  {% endif %}
+</main>
+{% endblock %}

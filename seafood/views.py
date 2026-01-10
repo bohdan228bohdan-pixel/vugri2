@@ -160,7 +160,23 @@ def _product_from_db_or_sample(product_id):
 
 def homepage(request):
     products = SeafoodProduct.objects.all()
-    return render(request, 'homepage.html', {'products': products})
+
+    has_chats = False
+    chats_count = 0
+    try:
+        if request.user.is_authenticated:
+            qs = Conversation.objects.filter(participants=request.user)
+            has_chats = qs.exists()
+            chats_count = qs.count()
+    except Exception:
+        has_chats = False
+        chats_count = 0
+
+    return render(request, 'homepage.html', {
+        'products': products,
+        'has_chats': has_chats,
+        'chats_count': chats_count,
+    })
 
 
 def products(request):
@@ -1060,3 +1076,25 @@ def submit_order(request):
 
     # redirect to confirmation page (with chat link)
     return redirect('order_complete', order_id=order.id)
+
+# Додати в кінець файлу seafood/views.py (після існуючих view-ів)
+
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+
+@login_required
+def my_conversations(request):
+    """
+    Показує список розмов, в яких учасник — поточний користувач.
+    """
+    qs = Conversation.objects.filter(participants=request.user).select_related('order').prefetch_related('participants').order_by('-created_at')
+    return render(request, 'conversations_list.html', {'conversations': qs, 'title': 'Мої чати'})
+
+
+@staff_member_required
+def all_conversations(request):
+    """
+    Показує всі розмови для продавця/staff.
+    """
+    qs = Conversation.objects.select_related('order').prefetch_related('participants').order_by('-created_at')
+    return render(request, 'conversations_list.html', {'conversations': qs, 'title': 'Всі чати (для продавця)'})

@@ -245,11 +245,6 @@ textarea.input{ min-height:80px; resize:vertical; }
   </div>
 
   <div class="field">
-    <label class="field-label required">Кількість (г)</label>
-    <input class="input" name="quantity" value="{{ posted.quantity|default:'100' }}" type="number" min="1" required>
-  </div>
-
-  <div class="field">
     <label class="field-label required">E-mail</label>
     <input class="input" name="email" type="email" value="{{ posted.email|default:'' }}" required>
   </div>

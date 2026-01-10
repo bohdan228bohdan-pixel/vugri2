@@ -41,8 +41,11 @@
       <div class="info-row" style="flex-direction:column;align-items:flex-start;padding:0">
         <span class="profile-label" style="margin-bottom:8px">Ваші замовлення вугра:</span>
         <ul style="padding-left:18px;color:var(--muted)">
-          <li>Замовлення #12345 — 1.2 кг вугра — 01.12.2025</li>
-          <li>Замовлення #12346 — 500 г ікри — 15.11.2025</li>
+          {% for order in orders %}
+            <li>Замовлення #{{ order.id }} — {{ order.product.name }} — {{ order.quantity }} г — {{ order.total_price }} грн — {{ order.created_at|date:'d.m.Y H:i' }}</li>
+          {% empty %}
+            <li>У вас ще немає замовлень.</li>
+          {% endfor %}
         </ul>
       </div>
     </div>

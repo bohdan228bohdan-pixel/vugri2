@@ -54,5 +54,7 @@ urlpatterns = [
     path('products/', seafood_views.products_list, name='products_list'),
     path('order/complete/<int:order_id>/', seafood_views.order_complete, name='order_complete'),
     path('chat/<int:conv_id>/', seafood_views.chat_view, name='chat'),
+    path('conversations/', seafood_views.my_conversations, name='my_conversations'),
+    path('conversations/all/', seafood_views.all_conversations, name='all_conversations'),
 
 ]
