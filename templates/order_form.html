@@ -175,12 +175,13 @@ textarea.input{ min-height:80px; resize:vertical; }
     <section class="panel" aria-labelledby="form-heading">
       <h2 id="form-heading" style="color:var(--white); margin:0 0 12px; text-align:center">Спосіб отримання</h2>
 
-      <form method="post" id="orderForm" novalidate>
+      <form method="post" id="orderForm" action="{% url 'submit_order' %}" novalidate>
         {% csrf_token %}
+        <input type="hidden" name="product_id" value="{{ product.id }}">
 
         <!-- Delivery options -->
         <div class="delivery-list" id="deliveryList" role="radiogroup" aria-label="Способи доставки">
-          <label class="delivery-card {% if posted.delivery_method == 'ukrposhta' or not posted.delivery_method %}active{% endif %}" data-value="ukrposhta" role="radio" aria-checked="{% if posted.delivery_method == 'ukrposhta' or not posted.delivery_method %}true{% else %}false{% endif %}">
+          <label class="delivery-card {% if posted.delivery_type == 'ukrposhta' or not posted.delivery_type %}active{% endif %}" data-value="ukrposhta" role="radio" aria-checked="{% if posted.delivery_type == 'ukrposhta' or not posted.delivery_type %}true{% else %}false{% endif %}">
             <div class="delivery-left">
               <img src="{% static 'img/ukrposhta.png' %}" alt="Ukrposhta" class="delivery-logo" onerror="this.style.display='none'">
               <div class="delivery-info">
@@ -188,10 +189,10 @@ textarea.input{ min-height:80px; resize:vertical; }
                 <div class="desc">Доставка протягом 1–3 днів — <strong style="color:var(--white)">безкоштовно</strong></div>
               </div>
             </div>
-            <input type="radio" name="delivery_method" value="ukrposhta" style="display:none" {% if posted.delivery_method == 'ukrposhta' or not posted.delivery_method %}checked{% endif %}>
+            <input type="radio" name="delivery_type" value="ukrposhta" style="display:none" {% if posted.delivery_type == 'ukrposhta' or not posted.delivery_type %}checked{% endif %}>
           </label>
 
-          <label class="delivery-card {% if posted.delivery_method == 'nova_branch' %}active{% endif %}" data-value="nova_branch" role="radio" aria-checked="{% if posted.delivery_method == 'nova_branch' %}true{% else %}false{% endif %}">
+          <label class="delivery-card {% if posted.delivery_type == 'nova_branch' %}active{% endif %}" data-value="nova_branch" role="radio" aria-checked="{% if posted.delivery_type == 'nova_branch' %}true{% else %}false{% endif %}">
             <div class="delivery-left">
               <img src="{% static 'img/nova_poshta.png' %}" alt="Nova Poshta" class="delivery-logo" onerror="this.style.display='none'">
               <div class="delivery-info">
@@ -199,10 +200,10 @@ textarea.input{ min-height:80px; resize:vertical; }
                 <div class="desc">Доставка протягом 1–3 днів — <strong style="color:var(--white)">від 60 грн.</strong></div>
               </div>
             </div>
-            <input type="radio" name="delivery_method" value="nova_branch" style="display:none" {% if posted.delivery_method == 'nova_branch' %}checked{% endif %}>
+            <input type="radio" name="delivery_type" value="nova_branch" style="display:none" {% if posted.delivery_type == 'nova_branch' %}checked{% endif %}>
           </label>
 
-          <label class="delivery-card {% if posted.delivery_method == 'nova_courier' %}active{% endif %}" data-value="nova_courier" role="radio" aria-checked="{% if posted.delivery_method == 'nova_courier' %}true{% else %}false{% endif %}">
+          <label class="delivery-card {% if posted.delivery_type == 'nova_courier' %}active{% endif %}" data-value="nova_courier" role="radio" aria-checked="{% if posted.delivery_type == 'nova_courier' %}true{% else %}false{% endif %}">
             <div class="delivery-left">
               <img src="{% static 'img/nova_poshta.png' %}" alt="Nova Poshta courier" class="delivery-logo" onerror="this.style.display='none'">
               <div class="delivery-info">
@@ -210,7 +211,7 @@ textarea.input{ min-height:80px; resize:vertical; }
                 <div class="desc">Доставка протягом 1–3 днів — <strong style="color:var(--white)">від 95 грн.</strong></div>
               </div>
             </div>
-            <input type="radio" name="delivery_method" value="nova_courier" style="display:none" {% if posted.delivery_method == 'nova_courier' %}checked{% endif %}>
+            <input type="radio" name="delivery_type" value="nova_courier" style="display:none" {% if posted.delivery_type == 'nova_courier' %}checked{% endif %}>
           </label>
         </div>
 
@@ -223,50 +224,56 @@ textarea.input{ min-height:80px; resize:vertical; }
           </div>
         {% endif %}
 
-        <div class="form-grid">
-          <div class="field">
-            <label class="field-label required">Область</label>
-            <input class="input" name="region" placeholder="Волинська" value="{{ posted.region|default:'' }}" required>
-          </div>
-          <div class="field">
-            <label class="field-label required">Місто</label>
-            <input class="input" name="city" placeholder="Луцьк" value="{{ posted.city|default:'' }}" required>
-          </div>
+        <<div class="form-grid">
+  <div class="field">
+    <label class="field-label required">Область</label>
+    <input class="input" name="region" placeholder="Волинська" value="{{ posted.region|default:'' }}" required>
+  </div>
+  <div class="field">
+    <label class="field-label required">Місто</label>
+    <input class="input" name="city" placeholder="Луцьк" value="{{ posted.city|default:'' }}" required>
+  </div>
 
-          <div class="field">
-            <label class="field-label required">Відділення / Адреса</label>
-            <input class="input" name="address" placeholder="№12 або вул., буд." value="{{ posted.address|default:'' }}" required>
-          </div>
-          <div class="field">
-            <label class="field-label required">Кількість (г)</label>
-            <input class="input" name="quantity" value="{{ posted.quantity|default:'100' }}" type="number" min="1" required>
-          </div>
+  <div class="field">
+    <label class="field-label required">Індекс (Postal)</label>
+    <input class="input" name="postal" placeholder="01001" value="{{ posted.postal|default:'' }}" required>
+  </div>
 
-          <div class="field">
-            <label class="field-label required">E-mail</label>
-            <input class="input" name="email" type="email" value="{{ posted.email|default:'' }}" required>
-          </div>
-          <div class="field">
-            <label class="field-label required">Телефон</label>
-            <input class="input" name="phone" type="tel" placeholder="+380..." value="{{ posted.phone|default:'' }}" required>
-          </div>
-        </div>
+  <div class="field">
+    <label class="field-label required">Відділення / Адреса</label>
+    <input class="input" name="address" placeholder="№12 або вул., буд." value="{{ posted.address|default:'' }}" required>
+  </div>
 
-        <!-- Full name fields (three columns on wide, stacked on mobile) -->
-        <div style="margin-top:14px">
-          <label class="field-label">ПІБ</label>
-          <div class="names-grid">
-            <div class="field">
-              <input class="input" name="surname" placeholder="Прізвище" value="{{ posted.surname|default:'' }}">
-            </div>
-            <div class="field">
-              <input class="input" name="name" placeholder="Ім'я" value="{{ posted.name|default:'' }}">
-            </div>
-            <div class="field">
-              <input class="input" name="patronymic" placeholder="По батькові" value="{{ posted.patronymic|default:'' }}">
-            </div>
-          </div>
-        </div>
+  <div class="field">
+    <label class="field-label required">Кількість (г)</label>
+    <input class="input" name="quantity" value="{{ posted.quantity|default:'100' }}" type="number" min="1" required>
+  </div>
+
+  <div class="field">
+    <label class="field-label required">E-mail</label>
+    <input class="input" name="email" type="email" value="{{ posted.email|default:'' }}" required>
+  </div>
+  <div class="field">
+    <label class="field-label required">Телефон</label>
+    <input class="input" name="phone" type="tel" placeholder="+380..." value="{{ posted.phone|default:'' }}" required>
+  </div>
+</div>
+
+<!-- Full name fields (three columns on wide, stacked on mobile) -->
+<div style="margin-top:14px">
+  <label class="field-label required">ПІБ</label>
+  <div class="names-grid">
+    <div class="field">
+      <input class="input" name="last_name" placeholder="Прізвище" value="{{ posted.last_name|default:'' }}" required>
+    </div>
+    <div class="field">
+      <input class="input" name="first_name" placeholder="Ім'я" value="{{ posted.first_name|default:'' }}" required>
+    </div>
+    <div class="field">
+      <input class="input" name="middle_name" placeholder="По батькові" value="{{ posted.middle_name|default:'' }}" required>
+    </div>
+  </div>
+</div>
 
         <div class="cta-wrap">
           <button type="submit" class="btn-cta">Продовжити</button>

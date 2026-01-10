@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Ваше замовлення отримано — #{{ order.id }}{% endblock %}
+
+{% block content %}
+<main style="max-width:1000px;margin:24px auto;padding:0 18px;color:var(--muted)">
+  <h1 style="color:var(--white);margin-bottom:18px">Ваше замовлення отримано</h1>
+
+  <div style="background:#fff;border-radius:6px;padding:18px;color:#111;">
+    <h3>Замовлення №{{ order.id }}</h3>
+    <div style="margin-top:8px;color:#333;line-height:1.5;">
+      <!-- Текст інструкцій (можна динамічно підставити залежно від способу оплати) -->
+      {% if order.status == 'created' %}
+        <p>Дякуємо! Ми отримали замовлення. Деталі нижче. Оплатіть за інструкцією або зачекайте повідомлення від продавця.</p>
+      {% endif %}
+    </div>
+
+    <dl style="display:grid;grid-template-columns:220px 1fr;gap:8px 18px;margin-top:12px;color:var(--muted);">
+  <dt>Ім'я та прізвище</dt><dd>{{ order.full_name }}</dd>
+
+  <dt>Е‑пошта</dt>
+  <dd>
+    {% if order.user %}
+      {{ order.user.email }}
+    {% else %}
+      {{ "" }}
+    {% endif %}
+  </dd>
+
+  <dt>Телефон</dt><dd>{{ order.phone }}</dd>
+  <dt>Місто</dt><dd>{{ order.city }}</dd>
+  <dt>Спосіб доставки</dt><dd>{{ order.postal }}</dd>
+  <dt>Адреса</dt><dd>{{ order.branch }}</dd>
+  <dt>Спосіб оплати</dt><dd>{% if order.status %}{{ order.status }}{% endif %}</dd>
+</dl>
+
+    <hr style="margin:16px 0">
+
+    <h4>Ваше замовлення</h4>
+    <!-- Тут коротко вивести продукт(и) замовлення -->
+    <div style="border:1px solid rgba(0,0,0,0.06);padding:12px;border-radius:6px;">
+      <div style="display:flex;gap:12px;align-items:center">
+        {% if order.product and order.product.image %}
+          <img src="{{ order.product.image.url }}" alt="{{ order.product.name }}" style="width:80px;height:80px;object-fit:cover;border-radius:6px">
+        {% endif %}
+        <div>
+          <div style="font-weight:800">{{ order.product.name }}</div>
+          <div style="color:var(--muted)">{{ order.quantity_g }} г — {{ order.total_price }} грн</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:12px;align-items:center">
+      <a href="{% url 'chat' conversation.id %}" class="btn btn-primary">Написати продавцю VugriUa</a>
+
+      <!-- Inline quick message form -->
+      {% if request.user.is_authenticated %}
+      <form action="{% url 'chat' conversation.id %}" method="post" style="margin-left:12px;display:flex;gap:8px;align-items:center;">
+        {% csrf_token %}
+        <input name="text" placeholder="Написати повідомлення продавцю..." style="padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);min-width:320px">
+        <button class="btn btn-outline" type="submit">Відправити</button>
+      </form>
+      {% else %}
+        <a href="{% url 'login' %}?next={% url 'chat' conversation.id %}" class="btn btn-outline">Увійти щоб написати</a>
+      {% endif %}
+    </div>
+  </div>
+</main>
+{% endblock %}

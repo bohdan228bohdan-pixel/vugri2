@@ -1,7 +1,4 @@
-"""
-Replace E:\soft\vugri\seafood\views.py with this file.
-Consolidated, cleaned version of the view functions you provided.
-"""
+
 import random
 import requests
 from decimal import Decimal
@@ -33,8 +30,9 @@ from .models import (
     Favorite,
     Review,
     ProductImage,
+    Conversation,
+    Message,
 )
-
 # Configure Stripe
 stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
 
@@ -326,72 +324,6 @@ def order_form(request, product_id):
     if not product_obj:
         return render(request, '404.html', status=404)
     return render(request, 'order_form.html', {'product': product_obj})
-
-
-def submit_order(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Invalid request method'}, status=400)
-
-    product_id = int(request.POST.get('product_id') or 0)
-    product_obj, db_prod = _product_from_db_or_sample(product_id)
-    if not product_obj:
-        return render(request, '404.html', status=404)
-
-    delivery_type = request.POST.get('delivery_type', '').strip()
-    postal = request.POST.get('postal', '').strip()
-    region = request.POST.get('region', '').strip()
-    city = request.POST.get('city', '').strip()
-    branch = request.POST.get('branch', '').strip()
-    address = request.POST.get('address', '').strip()
-
-    first_name = request.POST.get('first_name', '').strip()
-    last_name = request.POST.get('last_name', '').strip()
-    middle_name = request.POST.get('middle_name', '').strip()
-    email = request.POST.get('email', '').strip()
-    phone = request.POST.get('phone', '').strip()
-
-    full_name = f"{last_name} {first_name} {middle_name}".strip()
-
-    if address:
-        branch = address
-
-    try:
-        quantity = int(request.POST.get('quantity', 100))
-    except (TypeError, ValueError):
-        quantity = 100
-
-    price_per_100g = Decimal(str(product_obj.price_per_100g))
-    total_price = (Decimal(quantity) / Decimal(100)) * price_per_100g
-
-    if not (delivery_type and postal and region and city and branch and first_name and last_name and middle_name and email and phone):
-        return render(request, 'order_form.html', {
-            'product': product_obj,
-            'error': "Заповніть всі поля (служба доставки, дані доставки, контактні дані)."
-        })
-
-    if db_prod is None:
-        db_prod = SeafoodProduct.objects.create(
-            name=product_obj.name,
-            description=product_obj.description,
-            price_per_100g=price_per_100g,
-        )
-
-    order = Order.objects.create(
-        product=db_prod,
-        user=request.user if request.user.is_authenticated else None,
-        full_name=full_name,
-        phone=phone,
-        region=region,
-        city=city,
-        postal=postal,
-        branch=branch,
-        quantity_g=quantity,
-        total_price=total_price,
-        status='created',
-    )
-
-    return redirect('payment', order_id=order.id)
-
 
 def payment(request, order_id):
     order = get_object_or_404(Order, id=order_id)
@@ -960,3 +892,171 @@ def checkout_success(request):
     if not last:
         return redirect(reverse('products'))
     return render(request, 'checkout_success.html', {'order': last, 'order_id': last.get('order_id')})
+def products_list(request, *args, **kwargs):
+    return products(request, *args, **kwargs)
+# backward compatibility wrapper — якщо urls.py чекає products_list
+def products_list(request, *args, **kwargs):
+    return products(request, *args, **kwargs)
+
+
+from django.contrib.auth import get_user_model
+
+def order_complete(request, order_id):
+    """Показує сторінку підтвердження замовлення і гарантує Conversation."""
+    order = get_object_or_404(Order, id=order_id)
+    User = get_user_model()
+    seller, _ = User.objects.get_or_create(username='VugriUa', defaults={'email': 'vugriua@example.com', 'is_active': True})
+    conv, _ = Conversation.objects.get_or_create(order=order)
+    if order.user:
+        conv.participants.add(order.user)
+    conv.participants.add(seller)
+    conv.save()
+    messages = conv.messages.select_related('sender').all()
+    return render(request, 'order_complete.html', {'order': order, 'conversation': conv, 'messages': messages})
+
+
+@require_http_methods(["GET", "POST"])
+def chat_view(request, conv_id):
+    conv = get_object_or_404(Conversation, id=conv_id)
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user not in conv.participants.all():
+        return render(request, '403.html', status=403)
+    if request.method == 'POST':
+        text = request.POST.get('text', '').strip()
+        if text:
+            Message.objects.create(conversation=conv, sender=request.user, text=text)
+            return redirect('chat', conv_id=conv.id)
+    messages = conv.messages.select_related('sender').all()
+    return render(request, 'chat.html', {'conversation': conv, 'messages': messages})
+
+@require_POST
+def submit_order(request):
+    # очікуємо POST
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid request method'}, status=400)
+
+    product_id = int(request.POST.get('product_id') or 0)
+    product_obj, db_prod = _product_from_db_or_sample(product_id)
+    if not product_obj:
+        return render(request, '404.html', status=404)
+
+    delivery_type = request.POST.get('delivery_type', '').strip()
+    postal = request.POST.get('postal', '').strip()
+    region = request.POST.get('region', '').strip()
+    city = request.POST.get('city', '').strip()
+    branch = request.POST.get('branch', '').strip()
+    address = request.POST.get('address', '').strip()
+
+    first_name = request.POST.get('first_name', '').strip()
+    last_name = request.POST.get('last_name', '').strip()
+    middle_name = request.POST.get('middle_name', '').strip()
+    email = request.POST.get('email', '').strip()
+    phone = request.POST.get('phone', '').strip()
+
+    full_name = f"{last_name} {first_name} {middle_name}".strip()
+    if address:
+        branch = address
+
+    try:
+        quantity = int(request.POST.get('quantity', 100))
+    except (TypeError, ValueError):
+        quantity = 100
+
+    price_per_100g = Decimal(str(product_obj.price_per_100g))
+    total_price = (Decimal(quantity) / Decimal(100)) * price_per_100g
+
+    if not (delivery_type and postal and region and city and branch and first_name and last_name and middle_name and email and phone):
+        return render(request, 'order_form.html', {
+            'product': product_obj,
+            'error': "Заповніть всі поля (служба доставки, дані доставки, контактні дані)."
+        })
+
+    # створюємо/отримуємо DB-продукт
+    if db_prod is None:
+        db_prod = SeafoodProduct.objects.create(
+            name=product_obj.name,
+            description=product_obj.description,
+            price_per_100g=price_per_100g,
+        )
+
+    # створюємо order
+    order = Order.objects.create(
+        product=db_prod,
+        user=request.user if request.user.is_authenticated else None,
+        full_name=full_name,
+        phone=phone,
+        region=region,
+        city=city,
+        postal=postal,
+        branch=branch,
+        quantity_g=quantity,
+        total_price=total_price,
+        status='created',
+    )
+
+    # ensure seller user exists
+    try:
+        seller = User.objects.filter(username='VugriUa').first()
+        if not seller:
+            seller = User.objects.create(username='VugriUa', email='vugriua@example.com', is_active=True)
+            seller.set_unusable_password()
+            seller.save()
+    except Exception:
+        seller = None
+
+    # create/get conversation tied to order
+    conv, _ = Conversation.objects.get_or_create(order=order)
+    if order.user:
+        conv.participants.add(order.user)
+    if seller:
+        conv.participants.add(seller)
+    conv.save()
+
+    # initial message for seller
+    initial_msg_text = (
+        f"Нове замовлення #{order.id}\n"
+        f"Товар: {order.product.name}\n"
+        f"Кількість (г): {order.quantity_g}\n"
+        f"Сума: {order.total_price}\n"
+        f"Клієнт: {order.full_name}\n"
+        f"Телефон: {order.phone}\n"
+        f"Місто: {order.city}\n"
+        f"Адреса/Відділення: {order.branch}\n"
+        f"Email: {email}"
+    )
+    # створюємо повідомлення; якщо немає seller — використовуємо sender=None не дозволяється, тому ставимо sender=seller коли є
+    if seller:
+        Message.objects.create(conversation=conv, sender=seller, text=initial_msg_text)
+    else:
+        Message.objects.create(conversation=conv, sender=conv.participants.first(), text=initial_msg_text)
+
+    # сформувати лист
+    subject = f"Нове замовлення #{order.id} — VugriUkraine"
+    chat_url = request.build_absolute_uri(reverse('chat', args=[conv.id]))
+    message = (
+        f"Нове замовлення #{order.id}\n\n"
+        f"Товар: {order.product.name}\nКількість (г): {order.quantity_g}\nСума: {order.total_price}\n\n"
+        f"Дані замовника:\nІм'я: {order.full_name}\nТелефон: {order.phone}\nEmail: {email}\nМісто: {order.city}\nАдреса: {order.branch}\n\n"
+        f"Посилання на чат: {chat_url}\n"
+    )
+    html_message = f"<p>Нове замовлення #{order.id}</p><p>Товар: {order.product.name}<br>Кількість (г): {order.quantity_g}<br>Сума: {order.total_price}</p><p>Клієнт: {order.full_name}<br>Телефон: {order.phone}<br>Email: {email}</p><p>Чат: <a href='{chat_url}'>{chat_url}</a></p>"
+
+    # отримувачі
+    recipients = []
+    if getattr(settings, 'ORDER_NOTIFICATION_EMAIL', None):
+        recipients.append(settings.ORDER_NOTIFICATION_EMAIL)
+    if seller and seller.email:
+        recipients.append(seller.email)
+    recipients = list(dict.fromkeys([r for r in recipients if r]))
+
+    # SEND synchronously (console backend will print it)
+    if recipients:
+        try:
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipients, html_message=html_message, fail_silently=False)
+        except Exception as e:
+            import logging
+            logging.exception("Failed to send order email: %s", e)
+
+    # redirect to confirmation page (with chat link)
+    return redirect('order_complete', order_id=order.id)

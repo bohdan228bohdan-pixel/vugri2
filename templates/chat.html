@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Чат — розмова #{{ conversation.id }}{% endblock %}
+
+{% block content %}
+<main style="max-width:900px;margin:24px auto;padding:0 16px;color:var(--muted)">
+  <h1 style="color:var(--white)">Чат з VugriUa</h1>
+
+  <div style="background:#0f1111;padding:12px;border-radius:10px;min-height:300px;display:flex;flex-direction:column;gap:12px">
+    <div id="messages" style="overflow:auto;max-height:520px;padding:8px;display:flex;flex-direction:column;gap:10px;">
+      {% for m in messages %}
+        <div style="align-self: {% if m.sender == request.user %}flex-end{% else %}flex-start{% endif %}; max-width:78%; background: {% if m.sender == request.user %}var(--accent){% else %}rgba(255,255,255,0.04){% endif %}; padding:10px;border-radius:10px;color:#fff;">
+          <div style="font-size:13px;color:rgba(255,255,255,0.85);font-weight:700">{{ m.sender.username }}</div>
+          <div style="margin-top:6px;white-space:pre-wrap">{{ m.text|linebreaksbr }}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:8px">{{ m.created_at }}</div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <form id="msgForm" method="post" action="{% url 'chat' conversation.id %}" style="display:flex;gap:8px;">
+      {% csrf_token %}
+      <input name="text" id="msgText" placeholder="Напишіть повідомлення..." autocomplete="off" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)">
+      <button type="submit" class="btn btn-primary">Відправити</button>
+    </form>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const messagesEl = document.getElementById('messages');
+  if(messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  // простий AJAX для відправки (покращує UX)
+  const form = document.getElementById('msgForm');
+  form && form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    const text = document.getElementById('msgText').value.trim();
+    if(!text) return;
+    const data = new FormData(form);
+    const res = await fetch(form.action, { method:'POST', headers: {'X-Requested-With':'XMLHttpRequest'}, body: data });
+    if(res.redirected){
+      // якщо сервер робить redirect, перейти (Post-Redirect-Get)
+      window.location.href = res.url;
+      return;
+    }
+    // простий ребут сторінки (альтернативно — парсити JSON)
+    window.location.reload();
+  });
+})();
+</script>
+{% endblock %}

@@ -51,5 +51,8 @@ urlpatterns = [
     # Favorites
     path('favorites/', seafood_views.favorites_view, name='favorites'),
     path('favorites/toggle/', seafood_views.toggle_favorite, name='toggle_favorite'),
+    path('products/', seafood_views.products_list, name='products_list'),
+    path('order/complete/<int:order_id>/', seafood_views.order_complete, name='order_complete'),
+    path('chat/<int:conv_id>/', seafood_views.chat_view, name='chat'),
 
 ]

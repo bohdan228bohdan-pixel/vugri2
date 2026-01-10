@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container" style="max-width:1100px;margin:20px auto;">
+  <nav class="category-bar" aria-label="Категорії">
+    <ul class="category-list" style="display:flex;gap:18px;list-style:none;padding:8px 0;margin:0;overflow:auto;">
+      <li>
+        <a href="{% url 'products_list' %}" class="cat-link {% if not active_category %}active{% endif %}">Усі</a>
+      </li>
+      {% for cat in categories %}
+        <li>
+          <a href="{% url 'products_list' %}?category={{ cat.slug }}" class="cat-link {% if active_category and active_category.slug == cat.slug %}active{% endif %}">
+            {{ cat.name }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  <section class="products-grid" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:18px;">
+    {% for p in products %}
+      <article class="product-card" style="width:calc(33.333% - 12px);min-width:200px;background:#fff;border-radius:8px;padding:12px;box-sizing:border-box;">
+        {% if p.image %}
+          <img src="{{ p.image.url }}" alt="{{ p.name }}" style="width:100%;height:160px;object-fit:cover;border-radius:6px;margin-bottom:8px;">
+        {% endif %}
+        <h3 style="margin:4px 0 8px;font-size:1rem;">{{ p.name }}</h3>
+        <div style="color:#666;font-weight:700;">{{ p.price|default_if_none:"" }} {{ p.price and "₴" }}</div>
+        <div style="font-size:0.85rem;color:#888;margin-top:6px;">Категорія: {{ p.category.name }}</div>
+      </article>
+    {% empty %}
+      <p>Товарів не знайдено у цій категорії.</p>
+    {% endfor %}
+  </section>
+</div>
+
+<style>
+/* прості стилі для панелі категорій (щоб виглядало як на скрині) */
+.cat-link{
+  display:inline-block;
+  padding:6px 8px;
+  color:#333;
+  text-decoration:none;
+  white-space:nowrap;
+}
+.cat-link.active{
+  font-weight:700;
+  color:#000;
+  border-bottom:2px solid #000;
+}
+.category-list::-webkit-scrollbar{ height:6px; }
+.category-list::-webkit-scrollbar-thumb{ background:rgba(0,0,0,0.1); border-radius:4px; }
+@media (max-width:900px){
+  .product-card{ width:calc(50% - 12px) }
+}
+@media (max-width:520px){
+  .product-card{ width:100% }
+}
+</style>
+{% endblock %}

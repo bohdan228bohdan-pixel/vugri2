@@ -73,7 +73,7 @@ USE_I18N = True
 USE_TZ = True
 
 # Email (SMTP)
-EMAIL_BACKEND = os.environ.get('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 EMAIL_HOST = os.environ.get('DJANGO_EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('DJANGO_EMAIL_PORT', 587))
 EMAIL_HOST_USER = os.environ.get('DJANGO_EMAIL_USER', 'dieller7073@gmail.com')
@@ -84,9 +84,11 @@ EMAIL_HOST_PASSWORD = _raw_email_password.replace(' ', '') if _raw_email_passwor
 
 EMAIL_USE_TLS = os.environ.get('DJANGO_EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_USE_SSL = os.environ.get('DJANGO_EMAIL_USE_SSL', 'False') == 'True'
-DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
-
+DEFAULT_FROM_EMAIL = 'no-reply@vugri.local'
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+ORDER_NOTIFICATION_EMAIL = 'dieller7073@gmail.com'
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/profile/'
