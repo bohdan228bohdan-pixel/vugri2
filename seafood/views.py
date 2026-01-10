@@ -936,22 +936,44 @@ def chat_view(request, conv_id):
     conv = get_object_or_404(Conversation, id=conv_id)
     if not request.user.is_authenticated:
         return redirect('login')
-    if request.user not in conv.participants.all():
+
+    # allow staff to view any conversation; regular users only their own
+    if not (request.user.is_staff or conv.participants.filter(pk=request.user.pk).exists()):
         return render(request, '403.html', status=403)
+
     if request.method == 'POST':
+        # handle file upload (receipt)
+        receipt = request.FILES.get('receipt')
         text = request.POST.get('text', '').strip()
+
+        if receipt:
+            # optional: validate file size/type here
+            msg = Message.objects.create(conversation=conv, sender=request.user, text='[Квитанція]', image=receipt)
+            if conv.order:
+                conv.order.payment_status = 'processing'
+                conv.order.save()
+            # notify seller in chat (system message) if seller exists
+            seller = get_user_model().objects.filter(username='VugriUa').first()
+            if seller:
+                Message.objects.create(conversation=conv, sender=seller, text='Дякуємо, квитанцію отримано. Очікуйте підтвердження оплати.')
+            # respond to AJAX or redirect
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'ok': True})
+            return redirect('chat', conv_id=conv.id)
+
+        # normal text message
         if text:
             Message.objects.create(conversation=conv, sender=request.user, text=text)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'ok': True})
             return redirect('chat', conv_id=conv.id)
+
     messages = conv.messages.select_related('sender').all()
     return render(request, 'chat.html', {'conversation': conv, 'messages': messages})
 
 @require_POST
 def submit_order(request):
-    # очікуємо POST
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Invalid request method'}, status=400)
-
+    # очікуємо POST (decorator already ensures POST)
     product_id = int(request.POST.get('product_id') or 0)
     product_obj, db_prod = _product_from_db_or_sample(product_id)
     if not product_obj:
@@ -970,6 +992,9 @@ def submit_order(request):
     email = request.POST.get('email', '').strip()
     phone = request.POST.get('phone', '').strip()
 
+    # payment_method from form: 'card' or 'cash'
+    payment_method = request.POST.get('payment_method', '').strip()
+
     full_name = f"{last_name} {first_name} {middle_name}".strip()
     if address:
         branch = address
@@ -982,11 +1007,18 @@ def submit_order(request):
     price_per_100g = Decimal(str(product_obj.price_per_100g))
     total_price = (Decimal(quantity) / Decimal(100)) * price_per_100g
 
+    # validate required fields
     if not (delivery_type and postal and region and city and branch and first_name and last_name and middle_name and email and phone):
         return render(request, 'order_form.html', {
             'product': product_obj,
             'error': "Заповніть всі поля (служба доставки, дані доставки, контактні дані)."
         })
+
+    # If payment method is cash but delivery type not allowed for cash (business rule),
+    # you may want to reject or force card. Simple check: allow cash only for nova_branch (example).
+    if payment_method == 'cash' and delivery_type != 'nova_branch':
+        # force to card or show error; here we force to card
+        payment_method = 'card'
 
     # створюємо/отримуємо DB-продукт
     if db_prod is None:
@@ -996,7 +1028,7 @@ def submit_order(request):
             price_per_100g=price_per_100g,
         )
 
-    # створюємо order
+    # створюємо order (з payment fields)
     order = Order.objects.create(
         product=db_prod,
         user=request.user if request.user.is_authenticated else None,
@@ -1009,9 +1041,12 @@ def submit_order(request):
         quantity_g=quantity,
         total_price=total_price,
         status='created',
+        payment_method=payment_method or 'card',
+        payment_status='not_paid',
     )
 
     # ensure seller user exists
+    User = get_user_model()
     try:
         seller = User.objects.filter(username='VugriUa').first()
         if not seller:
@@ -1029,7 +1064,7 @@ def submit_order(request):
         conv.participants.add(seller)
     conv.save()
 
-    # initial message for seller
+    # initial message for seller with order summary
     initial_msg_text = (
         f"Нове замовлення #{order.id}\n"
         f"Товар: {order.product.name}\n"
@@ -1039,18 +1074,33 @@ def submit_order(request):
         f"Телефон: {order.phone}\n"
         f"Місто: {order.city}\n"
         f"Адреса/Відділення: {order.branch}\n"
-        f"Email: {email}"
+        f"Email: {email}\n"
+        f"Оплата: {order.get_payment_method_display() if order.payment_method else 'не вказано'}\n"
     )
-    # створюємо повідомлення; якщо немає seller — використовуємо sender=None не дозволяється, тому ставимо sender=seller коли є
     if seller:
         Message.objects.create(conversation=conv, sender=seller, text=initial_msg_text)
     else:
-        Message.objects.create(conversation=conv, sender=conv.participants.first(), text=initial_msg_text)
+        # fallback: use any participant as sender
+        sender = conv.participants.first()
+        if sender:
+            Message.objects.create(conversation=conv, sender=sender, text=initial_msg_text)
 
-    # сформувати лист
+    # If payment by card -> add automatic instruction message in chat
+    if order.payment_method == 'card' and seller:
+        instruction_text = (
+            f"Вітаю!\n\n"
+            f"1) Зайдіть у свій банк або мобільний додаток.\n"
+            f"2) Перекажіть кошти на карту: 4141 41XX XXXX XXXX (приклад) — Отримувач: VugriUA\n"
+            f"   Сума: {order.total_price}\n"
+            f"3) Зробіть фото квитанції та натисніть «Оплачено» в чаті або прикріпіть файл у повідомленні.\n\n"
+            f"Після отримання квитанції ми перевіримо оплату та підтвердимо."
+        )
+        Message.objects.create(conversation=conv, sender=seller, text=instruction_text)
+
+    # сформувати лист (optional)
     subject = f"Нове замовлення #{order.id} — VugriUkraine"
     chat_url = request.build_absolute_uri(reverse('chat', args=[conv.id]))
-    message = (
+    message_body = (
         f"Нове замовлення #{order.id}\n\n"
         f"Товар: {order.product.name}\nКількість (г): {order.quantity_g}\nСума: {order.total_price}\n\n"
         f"Дані замовника:\nІм'я: {order.full_name}\nТелефон: {order.phone}\nEmail: {email}\nМісто: {order.city}\nАдреса: {order.branch}\n\n"
@@ -1058,7 +1108,7 @@ def submit_order(request):
     )
     html_message = f"<p>Нове замовлення #{order.id}</p><p>Товар: {order.product.name}<br>Кількість (г): {order.quantity_g}<br>Сума: {order.total_price}</p><p>Клієнт: {order.full_name}<br>Телефон: {order.phone}<br>Email: {email}</p><p>Чат: <a href='{chat_url}'>{chat_url}</a></p>"
 
-    # отримувачі
+    # отримувачі (notification email + seller email)
     recipients = []
     if getattr(settings, 'ORDER_NOTIFICATION_EMAIL', None):
         recipients.append(settings.ORDER_NOTIFICATION_EMAIL)
@@ -1066,10 +1116,10 @@ def submit_order(request):
         recipients.append(seller.email)
     recipients = list(dict.fromkeys([r for r in recipients if r]))
 
-    # SEND synchronously (console backend will print it)
+    # SEND synchronously (console backend will print it in dev)
     if recipients:
         try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipients, html_message=html_message, fail_silently=False)
+            send_mail(subject, message_body, settings.DEFAULT_FROM_EMAIL, recipients, html_message=html_message, fail_silently=False)
         except Exception as e:
             import logging
             logging.exception("Failed to send order email: %s", e)
@@ -1098,3 +1148,37 @@ def all_conversations(request):
     """
     qs = Conversation.objects.select_related('order').prefetch_related('participants').order_by('-created_at')
     return render(request, 'conversations_list.html', {'conversations': qs, 'title': 'Всі чати (для продавця)'})
+
+@staff_member_required
+def confirm_payment(request, conv_id):
+    """
+    Staff-only action: підтверджує оплату для розмови/замовлення.
+    Якщо замовлення існує — ставить payment_status='paid', створює message від продавця.
+    Працює для AJAX (повертає JSON) або звичайного запиту (редірект в чат).
+    """
+    conv = get_object_or_404(Conversation, id=conv_id)
+    order = getattr(conv, 'order', None)
+    if not order:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'error': 'No order attached'}, status=400)
+        return redirect('chat', conv_id=conv.id)
+
+    # встановити статус і зберегти
+    order.payment_status = 'paid'
+    # якщо додаткові поля (payment_confirmed_by/at) присутні — заповнити їх
+    try:
+        # якщо поля є у моделі, присвоїмо їх без гарантії (атрибути створені опціонально)
+        order.payment_confirmed_by = request.user
+        order.payment_confirmed_at = timezone.now()
+    except Exception:
+        pass
+    order.save()
+
+    # створити системне повідомлення від продавця
+    seller = get_user_model().objects.filter(username='VugriUa').first() or request.user
+    sys_text = "Оплата отримана та підтверджена. Статус замовлення — Оплачено ✅"
+    Message.objects.create(conversation=conv, sender=seller, text=sys_text)
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'status': 'paid'})
+    return redirect('chat', conv_id=conv.id)

@@ -5,7 +5,17 @@
 
 {% block content %}
 <main style="max-width:900px;margin:24px auto;padding:0 16px;color:var(--muted)">
-  <h1 style="color:var(--white)">Чат з VugriUa</h1>
+  <h1 style="color:var(--white)">Чат з VugriUa
+    {% if conversation.order %}
+      {% if conversation.order.payment_status == 'paid' %}
+        <span style="background:green;color:#fff;padding:6px 10px;border-radius:8px;font-weight:700;margin-left:12px">Оплачено</span>
+      {% elif conversation.order.payment_status == 'processing' %}
+        <span style="background:orange;color:#111;padding:6px 10px;border-radius:8px;font-weight:700;margin-left:12px">В процесі</span>
+      {% else %}
+        <span style="background:red;color:#fff;padding:6px 10px;border-radius:8px;font-weight:700;margin-left:12px">Не оплачено</span>
+      {% endif %}
+    {% endif %}
+  </h1>
 
   <div style="background:#0f1111;padding:12px;border-radius:10px;min-height:300px;display:flex;flex-direction:column;gap:12px">
     <div id="messages" style="overflow:auto;max-height:520px;padding:8px;display:flex;flex-direction:column;gap:10px;">
@@ -13,16 +23,33 @@
         <div style="align-self: {% if m.sender == request.user %}flex-end{% else %}flex-start{% endif %}; max-width:78%; background: {% if m.sender == request.user %}var(--accent){% else %}rgba(255,255,255,0.04){% endif %}; padding:10px;border-radius:10px;color:#fff;">
           <div style="font-size:13px;color:rgba(255,255,255,0.85);font-weight:700">{{ m.sender.username }}</div>
           <div style="margin-top:6px;white-space:pre-wrap">{{ m.text|linebreaksbr }}</div>
+          {% if m.image %}
+            <div style="margin-top:8px;">
+              <a href="{{ m.image.url }}" target="_blank"><img src="{{ m.image.url }}" alt="receipt" style="max-width:240px;border-radius:8px;border:1px solid rgba(255,255,255,0.04)"></a>
+            </div>
+          {% endif %}
           <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:8px">{{ m.created_at }}</div>
         </div>
       {% endfor %}
     </div>
 
-    <form id="msgForm" method="post" action="{% url 'chat' conversation.id %}" style="display:flex;gap:8px;">
+    <form id="msgForm" method="post" action="{% url 'chat' conversation.id %}" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;">
       {% csrf_token %}
       <input name="text" id="msgText" placeholder="Напишіть повідомлення..." autocomplete="off" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)">
+      <input type="file" id="receiptFile" name="receipt" accept="image/*" style="display:none;">
+      {% if conversation.order and conversation.order.payment_method == 'card' and conversation.order.payment_status != 'paid' %}
+        <button type="button" id="paidBtn" class="btn btn-warning" title="Завантажити фото квитанції">Оплачено</button>
+      {% endif %}
       <button type="submit" class="btn btn-primary">Відправити</button>
     </form>
+
+    {% if user.is_staff and conversation.order and conversation.order.payment_status != 'paid' %}
+      <div style="margin-top:8px;">
+        <button type="button" id="confirmPaymentBtn" class="btn btn-success">
+          Підтвердити оплату
+        </button>
+      </div>
+    {% endif %}
   </div>
 </main>
 {% endblock %}
@@ -33,22 +60,92 @@
   const messagesEl = document.getElementById('messages');
   if(messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
 
-  // простий AJAX для відправки (покращує UX)
   const form = document.getElementById('msgForm');
-  form && form.addEventListener('submit', async function(e){
-    e.preventDefault();
-    const text = document.getElementById('msgText').value.trim();
-    if(!text) return;
-    const data = new FormData(form);
-    const res = await fetch(form.action, { method:'POST', headers: {'X-Requested-With':'XMLHttpRequest'}, body: data });
-    if(res.redirected){
-      // якщо сервер робить redirect, перейти (Post-Redirect-Get)
-      window.location.href = res.url;
-      return;
-    }
-    // простий ребут сторінки (альтернативно — парсити JSON)
-    window.location.reload();
-  });
+  const receiptFile = document.getElementById('receiptFile');
+  const paidBtn = document.getElementById('paidBtn');
+
+  function getCsrfToken(){
+    const el = document.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+  }
+
+  // receipt upload via "Оплачено" button
+  if(paidBtn && receiptFile){
+    paidBtn.addEventListener('click', ()=> receiptFile.click());
+
+    receiptFile.addEventListener('change', async function(){
+      if(!receiptFile.files.length) return;
+      const fd = new FormData();
+      fd.append('receipt', receiptFile.files[0]);
+
+      const csrftoken = getCsrfToken();
+      try{
+        const res = await fetch(form.action, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest' },
+          body: fd,
+          credentials: 'same-origin'
+        });
+        if(res.ok){
+          window.location.reload();
+        } else {
+          const text = await res.text();
+          alert('Не вдалося завантажити квитанцію: ' + res.status + ' ' + text);
+        }
+      } catch(e){
+        console.error(e);
+        alert('Помилка мережі під час завантаження.');
+      }
+    });
+  }
+
+  // AJAX for text messages
+  if(form){
+    form.addEventListener('submit', async function(e){
+      if(receiptFile && receiptFile.files.length) return; // file handler will manage it
+      e.preventDefault();
+      const text = document.getElementById('msgText').value.trim();
+      if(!text) return;
+      const fd = new FormData(form);
+      const csrftoken = getCsrfToken();
+      try {
+        const res = await fetch(form.action, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest' },
+          body: fd,
+          credentials: 'same-origin'
+        });
+        if(res.redirected){
+          window.location.href = res.url;
+          return;
+        }
+        window.location.reload();
+      } catch(e){
+        console.error(e); alert('Помилка відправки повідомлення');
+      }
+    });
+  }
+
+  // confirm payment (staff)
+  const confirmBtn = document.getElementById('confirmPaymentBtn');
+  if(confirmBtn){
+    confirmBtn.addEventListener('click', async function(){
+      if(!confirm('Підтвердити оплату для цього замовлення?')) return;
+      const url = "{% url 'confirm_payment' conversation.id %}";
+      const csrftoken = getCsrfToken();
+      try{
+        const res = await fetch(url, { method: 'POST', headers: {'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest'}, credentials: 'same-origin' });
+        const js = await res.json();
+        if(js.ok){
+          window.location.reload();
+        } else {
+          alert('Помилка: ' + (js.error || 'невідома'));
+        }
+      }catch(e){
+        alert('Помилка мережі при підтвердженні.');
+      }
+    });
+  }
 })();
 </script>
 {% endblock %}

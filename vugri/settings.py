@@ -95,3 +95,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 ORDER_NOTIFICATION_EMAIL = os.environ.get('ORDER_NOTIFICATION_EMAIL', 'dieller7073@gmail.com')
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/profile/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

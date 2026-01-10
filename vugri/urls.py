@@ -1,9 +1,12 @@
-# E:\soft\vugri\vugri\urls.py  (замініть повністю або онови маршрути)
+# E:\soft\vugri\vugri\urls.py
 from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views
 
 from seafood import views as seafood_views
+
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -53,8 +56,14 @@ urlpatterns = [
     path('favorites/toggle/', seafood_views.toggle_favorite, name='toggle_favorite'),
     path('products/', seafood_views.products_list, name='products_list'),
     path('order/complete/<int:order_id>/', seafood_views.order_complete, name='order_complete'),
+
+    # Chat / conversations
     path('chat/<int:conv_id>/', seafood_views.chat_view, name='chat'),
     path('conversations/', seafood_views.my_conversations, name='my_conversations'),
     path('conversations/all/', seafood_views.all_conversations, name='all_conversations'),
-
+    path('chat/<int:conv_id>/confirm_payment/', seafood_views.confirm_payment, name='confirm_payment'),
 ]
+
+# Serve media files in development (only when DEBUG=True)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

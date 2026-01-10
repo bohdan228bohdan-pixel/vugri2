@@ -224,51 +224,65 @@ textarea.input{ min-height:80px; resize:vertical; }
           </div>
         {% endif %}
 
-        <<div class="form-grid">
-  <div class="field">
-    <label class="field-label required">Область</label>
-    <input class="input" name="region" placeholder="Волинська" value="{{ posted.region|default:'' }}" required>
-  </div>
-  <div class="field">
-    <label class="field-label required">Місто</label>
-    <input class="input" name="city" placeholder="Луцьк" value="{{ posted.city|default:'' }}" required>
-  </div>
+        <div class="form-grid">
+          <div class="field">
+            <label class="field-label required">Область</label>
+            <input class="input" name="region" placeholder="Волинська" value="{{ posted.region|default:'' }}" required>
+          </div>
+          <div class="field">
+            <label class="field-label required">Місто</label>
+            <input class="input" name="city" placeholder="Луцьк" value="{{ posted.city|default:'' }}" required>
+          </div>
 
-  <div class="field">
-    <label class="field-label required">Індекс (Postal)</label>
-    <input class="input" name="postal" placeholder="01001" value="{{ posted.postal|default:'' }}" required>
-  </div>
+          <div class="field">
+            <label class="field-label required">Індекс (Postal)</label>
+            <input class="input" name="postal" placeholder="01001" value="{{ posted.postal|default:'' }}" required>
+          </div>
 
-  <div class="field">
-    <label class="field-label required">Відділення / Адреса</label>
-    <input class="input" name="address" placeholder="№12 або вул., буд." value="{{ posted.address|default:'' }}" required>
-  </div>
+          <div class="field">
+            <label class="field-label required">Відділення / Адреса</label>
+            <input class="input" name="address" placeholder="№12 або вул., буд." value="{{ posted.address|default:'' }}" required>
+          </div>
 
-  <div class="field">
-    <label class="field-label required">E-mail</label>
-    <input class="input" name="email" type="email" value="{{ posted.email|default:'' }}" required>
-  </div>
-  <div class="field">
-    <label class="field-label required">Телефон</label>
-    <input class="input" name="phone" type="tel" placeholder="+380..." value="{{ posted.phone|default:'' }}" required>
-  </div>
-</div>
+          <div class="field">
+            <label class="field-label required">E-mail</label>
+            <input class="input" name="email" type="email" value="{{ posted.email|default:'' }}" required>
+          </div>
+          <div class="field">
+            <label class="field-label required">Телефон</label>
+            <input class="input" name="phone" type="tel" placeholder="+380..." value="{{ posted.phone|default:'' }}" required>
+          </div>
+        </div>
 
-<!-- Full name fields (three columns on wide, stacked on mobile) -->
-<div style="margin-top:14px">
-  <label class="field-label required">ПІБ</label>
-  <div class="names-grid">
-    <div class="field">
-      <input class="input" name="last_name" placeholder="Прізвище" value="{{ posted.last_name|default:'' }}" required>
-    </div>
-    <div class="field">
-      <input class="input" name="first_name" placeholder="Ім'я" value="{{ posted.first_name|default:'' }}" required>
-    </div>
-    <div class="field">
-      <input class="input" name="middle_name" placeholder="По батькові" value="{{ posted.middle_name|default:'' }}" required>
-    </div>
-  </div>
-</div>
+        <!-- Full name fields (three columns on wide, stacked on mobile) -->
+        <div style="margin-top:14px">
+          <label class="field-label required">ПІБ</label>
+          <div class="names-grid">
+            <div class="field">
+              <input class="input" name="last_name" placeholder="Прізвище" value="{{ posted.last_name|default:'' }}" required>
+            </div>
+            <div class="field">
+              <input class="input" name="first_name" placeholder="Ім'я" value="{{ posted.first_name|default:'' }}" required>
+            </div>
+            <div class="field">
+              <input class="input" name="middle_name" placeholder="По батькові" value="{{ posted.middle_name|default:'' }}" required>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment method -->
+        <div style="margin-top:18px">
+          <label class="field-label required">Оплата</label>
+          <div style="display:flex;gap:14px;align-items:center;margin-top:8px;">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="radio" name="payment_method" value="card" {% if posted.payment_method == 'card' or not posted.payment_method %}checked{% endif %}> Оплата на картку Приват
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="radio" name="payment_method" value="cash" id="cashRadio" {% if posted.payment_method == 'cash' %}checked{% endif %}> Готівкою (тільки для самовивозу)
+            </label>
+          </div>
+          <div id="payment_note" class="small-muted" style="margin-top:8px;"></div>
+        </div>
 
         <div class="cta-wrap">
           <button type="submit" class="btn-cta">Продовжити</button>
@@ -289,8 +303,37 @@ document.addEventListener('DOMContentLoaded', function(){
       card.classList.add('active');
       const radio = card.querySelector('input[type=radio]');
       if(radio){ radio.checked = true; radio.dispatchEvent(new Event('change')); }
+      updateCashAvailability(); // update payment availability when delivery changes
     });
   });
+
+  // Payment availability: allow cash only for nova_branch (example: pickup)
+  const cashRadio = document.getElementById('cashRadio');
+  const paymentNote = document.getElementById('payment_note');
+
+  function updateCashAvailability(){
+    const active = document.querySelector('.delivery-card.active');
+    const value = active ? active.getAttribute('data-value') : null;
+    if(value === 'nova_branch'){
+      if(cashRadio){
+        cashRadio.disabled = false;
+        paymentNote.textContent = 'Готівка доступна для видачі у відділенні Нова пошта.';
+      }
+    } else {
+      if(cashRadio){
+        // if cash selected but not allowed, switch to card
+        if(cashRadio.checked){
+          const card = document.querySelector('input[name="payment_method"][value="card"]');
+          if(card) card.checked = true;
+        }
+        cashRadio.disabled = true;
+        paymentNote.textContent = 'Готівка доступна лише для самовивозу у відділенні. Оберіть інший спосіб доставки або оплатіть карткою.';
+      }
+    }
+  }
+
+  // initialize on load
+  updateCashAvailability();
 
   // Minimal client-side validation hint: highlight empty required fields
   const form = document.getElementById('orderForm');
