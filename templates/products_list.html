@@ -1,0 +1,20 @@
+{# Replace the product list loop with this improved markup.
+   Make sure this template loads static and that styles for .product-card and .out-of-stock-badge
+   exist in your static CSS (see previous messages). #}
+{% load static %}
+{% for product in products %}
+  <article class="product-card{% if not product.in_stock %} out-of-stock{% endif %}">
+  {% if not product.in_stock %}
+    <div class="out-of-stock-badge">Немає в наявності</div>
+  {% endif %}
+  <h3>{{ product.name }}</h3>
+  <p>{{ product.price_per_100g }} грн/100г</p>
+  {% if user.is_authenticated %}
+    <button class="btn-add" data-product-id="{{ product.id }}" {% if not product.in_stock %}disabled{% endif %}>
+      {% if product.in_stock %}До кошика{% else %}Немає в наявності{% endif %}
+    </button>
+  {% else %}
+    <a class="btn-add" href="{% url 'login' %}?next={{ request.path }}">Увійти, щоб купити</a>
+  {% endif %}
+</article>
+{% endfor %}

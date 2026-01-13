@@ -4,18 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Вхід — VugriUkraine</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
 </head>
 <body>
   <header class="site-header">
     <div class="site-brand">
-      <img src="/static/images/png/logo.png" alt="logo">
+      <img src="{% static 'images/png/logo.png' %}" alt="logo">
       <div style="color:var(--white);font-weight:800">VugriUkraine</div>
     </div>
     <nav class="site-nav">
-      <a href="/products/">Каталог</a>
-      <a href="/about/">Про нас</a>
-      <a href="/register/" class="cta">Реєстрація</a>
+      <a href="{% url 'products' %}">Каталог</a>
+      <a href="{% url 'about' %}">Про нас</a>
+      <a href="{% url 'register' %}" class="cta">Реєстрація</a>
     </nav>
   </header>
 
@@ -33,8 +33,15 @@
         {{ form.password }}
       </div>
       <button type="submit" class="btn btn-primary">Увійти</button>
+
       <p style="text-align:center;margin:12px 0;color:var(--muted)">або</p>
-      <p style="text-align:center;color:var(--muted)">Не маєте акаунту? <a href="/register/">Реєстрація</a></p>
+      <p style="text-align:center;color:var(--muted)">Не маєте акаунту? <a href="{% url 'register' %}">Реєстрація</a></p>
+
+      <hr style="border-top:1px solid rgba(255,255,255,0.04);margin:16px 0">
+
+      <p style="text-align:center;margin:0;">
+        <a href="{% url 'password_reset' %}">Забули пароль?</a>
+      </p>
     </form>
   </main>
 

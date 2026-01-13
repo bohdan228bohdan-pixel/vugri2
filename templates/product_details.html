@@ -35,6 +35,12 @@
 #product-detail .btn-fav { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: var(--white); font-size:18px; cursor:pointer; }
 #product-detail .btn-fav.favorited { background: linear-gradient(90deg,#ff4b6b,#ff2b2b); color:#fff; border-color: rgba(255,255,255,0.03); }
 
+/* Stock badge & admin toggle */
+.stock-badge { padding:6px 10px; border-radius:8px; font-weight:700; color:#fff; }
+.stock-yes { background: #1db954; }
+.stock-no { background: #d9534f; }
+.toggle-stock-btn { padding:8px 12px; border-radius:8px; background:#111; color:var(--accent); border:1px solid rgba(255,255,255,0.04); cursor:pointer; }
+
 /* Messages */
 #product-detail #product-msg { margin-top:12px; color:var(--muted); }
 
@@ -57,9 +63,7 @@
       <!-- Left: images -->
       <div class="img-col">
         <div class="product-img-wrap" aria-hidden="false">
-          {# main image: handle several possible formats for images in context #}
           {% if images %}
-            {% comment %} images may be list of url strings or objects with .url {% endcomment %}
             {% if images.0.url %}
               <img id="mainImage" src="{{ images.0.url }}" alt="{{ product.name }}" class="product-img" onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
             {% else %}
@@ -131,6 +135,21 @@
           </div>
         </div>
 
+        <!-- Stock status + staff toggle -->
+        <div style="display:flex;align-items:center;gap:12px;margin-top:12px;">
+          {% if product.in_stock %}
+            <span id="stockBadge" class="stock-badge stock-yes">В наявності</span>
+          {% else %}
+            <span id="stockBadge" class="stock-badge stock-no">Немає в наявності</span>
+          {% endif %}
+
+          {% if user.is_staff %}
+            <button id="toggleStockBtn" data-product-id="{{ product.id }}" class="toggle-stock-btn">
+              {% if product.in_stock %}Поставити як «немає в наявності»{% else %}Повернути в наявність{% endif %}
+            </button>
+          {% endif %}
+        </div>
+
         <div id="product-msg" aria-live="polite"></div>
 
         <hr style="border-color: rgba(255,255,255,0.04)">
@@ -138,7 +157,7 @@
         <h4 style="color:var(--white)">Опис</h4>
         <p style="color:var(--muted)">{{ product.description }}</p>
 
-        <!-- Reviews -->
+        <!-- Reviews (unchanged) -->
         <section id="reviews" style="margin-top:28px;">
           <h3 style="color:var(--white)">Відгуки{% if average_rating %} — середній рейтинг: {{ average_rating }}{% endif %}</h3>
 
@@ -248,7 +267,6 @@
       const data = new FormData();
       data.append('product_id', pid);
       data.append('quantity', qty);
-      // safe product details
       data.append('name', '{{ product.name|escapejs }}');
       data.append('price', '{{ product.price_per_100g|default:"0" }}');
       data.append('currency', 'UAH');
@@ -362,6 +380,55 @@
       }
     });
   }
+
+  /* Toggle availability (staff) */
+  const toggleBtn = document.getElementById('toggleStockBtn');
+  const stockBadge = document.getElementById('stockBadge');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', async function(){
+      if (!confirm('Підтвердити зміну доступності товару?')) return;
+      const pid = this.dataset.productId;
+      // build URL: using named URL pattern toggle_availability
+      const base = "{% url 'toggle_availability' 0 %}";
+      const url = base.replace('/0/', '/' + pid + '/');
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest'},
+          credentials: 'same-origin'
+        });
+        if (!res.ok) throw new Error('network');
+        const js = await res.json();
+        if (js.ok) {
+          if (js.in_stock) {
+            stockBadge.textContent = 'В наявності';
+            stockBadge.classList.remove('stock-no'); stockBadge.classList.add('stock-yes');
+            toggleBtn.textContent = 'Поставити як «немає в наявності»';
+          } else {
+            stockBadge.textContent = 'Немає в наявності';
+            stockBadge.classList.remove('stock-yes'); stockBadge.classList.add('stock-no');
+            toggleBtn.textContent = 'Повернути в наявність';
+          }
+        } else {
+          alert('Не вдалося змінити статус');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Помилка мережі або прав доступу.');
+      }
+    });
+  }
+
 })();
+
+if (addBtn) {
+  addBtn.addEventListener('click', async function(){
+    if (this.disabled) {
+      alert('Товар тимчасово відсутній і не може бути доданий у кошик.');
+      return;
+    }
+    // ... existing add to cart code ...
+  });
+}
 </script>
 {% endblock %}

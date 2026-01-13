@@ -506,11 +506,27 @@ def add_to_cart(request):
     if not product_id:
         return JsonResponse({'ok': False, 'error': 'product_id required'}, status=400)
 
-    name = request.POST.get('name', 'Товар')
+    # validate product exists and is available
     try:
-        price = int(float(request.POST.get('price', 0)))
+        product = get_object_or_404(SeafoodProduct, pk=int(product_id))
+    except Exception:
+        return JsonResponse({'ok': False, 'error': 'Продукт не знайдено'}, status=404)
+
+    if not product.in_stock:
+        return JsonResponse({'ok': False, 'error': 'Товар тимчасово відсутній', 'in_stock': False}, status=400)
+
+    # client-provided metadata (fallbacks)
+    name = request.POST.get('name', product.name or 'Товар')
+    try:
+        # prefer product.price_per_100g if client didn't provide a valid price
+        client_price = request.POST.get('price', None)
+        if client_price is None or client_price == '':
+            price = int(float(product.price_per_100g or 0))
+        else:
+            price = int(float(client_price))
     except (TypeError, ValueError):
-        price = 0
+        price = int(float(product.price_per_100g or 0))
+
     currency = request.POST.get('currency', 'UAH')
 
     raw_q = request.POST.get('quantity', '1')
@@ -526,11 +542,15 @@ def add_to_cart(request):
 
     image = request.POST.get('image', '')
 
+    # get or create cart (keeps existing helper)
     cart = _get_cart(request)
-    if product_id in cart:
-        cart[product_id]['quantity'] = int(cart[product_id].get('quantity', 0)) + quantity
+
+    # use string key for session-stored product id to be consistent
+    pid_key = str(product.id)
+    if pid_key in cart:
+        cart[pid_key]['quantity'] = int(cart[pid_key].get('quantity', 0)) + quantity
     else:
-        cart[product_id] = {
+        cart[pid_key] = {
             'name': name,
             'price': price,
             'currency': currency,
@@ -538,8 +558,8 @@ def add_to_cart(request):
             'image': image,
         }
     request.session.modified = True
-    return JsonResponse({'ok': True, 'cart_count': cart_count(request)})
 
+    return JsonResponse({'ok': True, 'cart_count': cart_count(request)})
 
 def cart_view(request):
     cart = _get_cart(request)
@@ -1182,3 +1202,20 @@ def confirm_payment(request, conv_id):
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'ok': True, 'status': 'paid'})
     return redirect('chat', conv_id=conv.id)
+
+@staff_member_required
+def toggle_availability(request, product_id):
+    """
+    Переключає product.in_stock (тільки для staff). Підтримує AJAX (JSON) і звичайний POST (redirect).
+    """
+    product = get_object_or_404(SeafoodProduct, id=product_id)
+    # toggle
+    product.in_stock = not product.in_stock
+    product.save()
+
+    # Якщо AJAX — повернути результат
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'in_stock': product.in_stock, 'product_id': product.id})
+
+    # Інакше — редірект назад на сторінку товару
+    return redirect(reverse('product_details', args=[product.id]))

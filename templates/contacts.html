@@ -1,84 +1,429 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Контакти — VugriUkraine{% endblock %}
+{% block title %}Контакти — VugriUa{% endblock %}
+
+{% block head_extra %}
+<style>
+/* Redesigned contacts page — socials first and much nicer */
+:root{
+  --social-size: 78px;
+  --social-gap: 14px;
+  --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  --card-border: rgba(255,255,255,0.04);
+  --muted: #9aa0a6;
+  --fg: #eaeaea;
+  --accent: #e75b2e;
+}
+
+/* Page container */
+.contacts-wrap {
+  max-width: 1100px;
+  margin: 28px auto;
+  padding: 18px;
+  color: var(--muted);
+  box-sizing: border-box;
+}
+
+/* Page header */
+.page-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:18px;
+  flex-wrap:wrap;
+}
+.page-head h1 {
+  margin:0;
+  color:var(--fg);
+  font-size:28px;
+  font-weight:900;
+}
+.page-intro {
+  color:var(--muted);
+  margin-top:6px;
+}
+
+/* Socials first: large tiles */
+.socials-grid {
+  display:flex;
+  gap:var(--social-gap);
+  align-items:stretch;
+  flex-wrap:wrap;
+  margin-bottom:22px;
+}
+.social-card {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width: 220px;
+  padding:14px;
+  border-radius:12px;
+  background: var(--card-bg);
+  border:1px solid var(--card-border);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  text-decoration:none;
+  color:var(--fg);
+  transition: transform .14s ease, box-shadow .14s ease;
+  position:relative;
+  overflow:hidden;
+}
+.social-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 22px 60px rgba(0,0,0,0.6);
+}
+.social-card .left {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+.social-avatar {
+  width: var(--social-size);
+  height: var(--social-size);
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  font-size:22px;
+  flex: 0 0 var(--social-size);
+  color:#fff;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+
+/* Color schemes for networks */
+.social-youtube .social-avatar { background: linear-gradient(180deg,#FF3D3D,#E60000); }
+.social-tiktok .social-avatar { background: linear-gradient(180deg,#25F4EE,#FD297B); }
+.social-telegram .social-avatar { background: linear-gradient(180deg,#2AABEE,#2682C7); }
+.social-instagram .social-avatar { background: linear-gradient(180deg,#FEDA77,#C13584); }
+.social-facebook .social-avatar { background: linear-gradient(180deg,#3B5998,#2D4373); }
+.social-threads .social-avatar { background: linear-gradient(180deg,#9F54FF,#4B2DE6); }
+
+/* Text block */
+.social-meta { min-width:0; display:flex;flex-direction:column;gap:2px; }
+.social-title { font-weight:900; color:var(--fg); font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.social-sub { color:var(--muted); font-size:13px; }
+
+/* Action chevron */
+.social-go { margin-left:auto; color:var(--muted); font-weight:800; }
+
+/* Badges (optional) */
+.social-badge {
+  position:absolute;
+  right:10px;
+  bottom:10px;
+  background:rgba(0,0,0,0.35);
+  color:#fff;
+  padding:6px 8px;
+  border-radius:8px;
+  font-weight:800;
+  font-size:12px;
+}
+
+/* CONTACT FORM + INFO layout (below socials) */
+.layout {
+  display:grid;
+  grid-template-columns: 1fr 360px;
+  gap:24px;
+  align-items:start;
+}
+@media (max-width:980px){
+  .layout { grid-template-columns: 1fr; }
+  .socials-grid { justify-content:center; }
+}
+
+/* Form card */
+.form-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  padding:18px;
+  border-radius:12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  color:var(--muted);
+}
+.form-card h2 { margin:0 0 12px; color:var(--fg); font-size:20px; font-weight:900 }
+
+/* Fields */
+.field-group { display:flex; gap:12px; margin-bottom:12px; }
+.field { display:flex;flex-direction:column; gap:6px; flex:1; min-width:0 }
+.field label { color:var(--muted); font-weight:700; font-size:13px }
+.field input, .field textarea {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+  color: var(--fg);
+  padding:10px 12px;
+  border-radius:8px;
+  font-size:14px;
+}
+.field textarea { min-height:120px; resize:vertical; }
+
+/* Form actions row */
+.actions-row { display:flex; gap:12px; align-items:center; margin-top:8px; }
+.btn-send { background: linear-gradient(90deg,var(--accent),var(--accent-dark)); color:#fff; padding:10px 14px; border-radius:10px; border:0; font-weight:800 }
+.btn-reset { background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.04); padding:8px 12px; border-radius:8px }
+
+/* Right column cards */
+.info-card {
+  background: var(--card-bg);
+  border:1px solid var(--card-border);
+  border-radius:12px;
+  padding:16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  color:var(--muted);
+}
+.info-card h3 { color:var(--fg); margin:0 0 8px; font-size:18px }
+
+/* Map placeholder */
+.map {
+  margin-top:12px;
+  width:100%;
+  height:220px;
+  border-radius:10px;
+  background: linear-gradient(180deg,#111,#0b0b0b);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--muted);
+  border:1px solid rgba(255,255,255,0.04);
+}
+
+/* FAQ tighter look */
+.faq .q { width:100%; background:transparent;border:0;color:var(--fg);display:flex;justify-content:space-between;align-items:center;padding:12px 0;font-weight:800;cursor:pointer }
+.faq .a { padding:0 0 12px;color:var(--muted);display:none }
+.faq .open .a{ display:block }
+
+/* small utilities */
+.muted { color:var(--muted) }
+.center { text-align:center }
+.visually-hidden { position:absolute;left:-9999px }
+</style>
+{% endblock %}
 
 {% block content %}
-  <main style="max-width:900px;margin:36px auto;padding:0 24px;color:var(--muted)">
-    <h1 style="color:var(--white);margin-bottom:6px">Контакти</h1>
-    <p style="margin-top:0">Підписуйтесь та пишіть нам у соцмережах:</p>
+<main class="contacts-wrap" id="content" role="main" aria-labelledby="contacts-title">
+  <header class="page-head">
+    <div>
+      <h1 id="contacts-title">Контакти та соціальні мережі</h1>
+      <div class="page-intro">Пишіть нам у месенджери та соцмережі — ми швидко відповідаємо. Нижче — наші офіційні акаунти.</div>
+    </div>
+  </header>
 
-    <div style="display:grid;gap:12px;margin-top:16px">
-      <a class="social-card" href="https://www.youtube.com/@Vugriua" target="_blank" rel="noopener">
-        <div class="social-left">
-          <div class="social-icon yt">Y</div>
-          <div>
-            <div class="social-title">YouTube</div>
-            <div class="social-sub">@Vugriua</div>
+  <!-- SOCIALS FIRST -->
+  <section aria-label="Наші соціальні мережі" class="socials-grid" role="list">
+    <!-- YouTube -->
+    <a class="social-card social-youtube" href="https://www.youtube.com/@Vugriua" target="_blank" rel="noopener" role="listitem" aria-label="YouTube — Vugriua">
+      <div class="left">
+        <div class="social-avatar" aria-hidden="true">
+          <!-- simple svg play icon -->
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M5 3.9c-.4.1-.8.3-1.1.6C3 4.9 3 6.6 3 6.6s-.1 2.9-.1 4.6V16c0 1.7 0 4 0 4s0 1.7.9 2.2c.6.3 1.3.5 2.1.6C8.7 23 12 23 12 23s3.3 0 6-0.1c.8-.1 1.5-.3 2.1-.6.9-.5.9-2.2.9-2.2s0-2.3 0-4V11.2c0-1.7 0-4 0-4s0-1.7-.9-2.2c-.6-.3-1.3-.5-2.1-.6C15.3 3 12 3 12 3S8.7 3 5 3.9z" fill="#fff"/><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg>
+        </div>
+        <div class="social-meta">
+          <div class="social-title">YouTube</div>
+          <div class="social-sub">@Vugriua</div>
+        </div>
+      </div>
+      <div class="social-go">Перейти →</div>
+      <div class="social-badge">Підписатися</div>
+    </a>
+
+    <!-- TikTok -->
+    <a class="social-card social-tiktok" href="https://www.tiktok.com/@vugri.ua" target="_blank" rel="noopener" role="listitem" aria-label="TikTok — vugri.ua">
+      <div class="left">
+        <div class="social-avatar" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 3v10.5a3.5 3.5 0 1 0 3.5 3.5V7h3V3h-6.5z" fill="#fff"/></svg>
+        </div>
+        <div class="social-meta">
+          <div class="social-title">TikTok</div>
+          <div class="social-sub">@vugri.ua</div>
+        </div>
+      </div>
+      <div class="social-go">Перейти →</div>
+    </a>
+
+    <!-- Telegram -->
+    <a class="social-card social-telegram" href="https://t.me/vugriua" target="_blank" rel="noopener" role="listitem" aria-label="Telegram — t.me/vugriua">
+      <div class="left">
+        <div class="social-avatar" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10l5 2 2 6 3-4 5 4V3z" fill="#fff"/></svg>
+        </div>
+        <div class="social-meta">
+          <div class="social-title">Telegram</div>
+          <div class="social-sub">t.me/vugriua</div>
+        </div>
+      </div>
+      <div class="social-go">Чат →</div>
+    </a>
+
+    <!-- Instagram -->
+    <a class="social-card social-instagram" href="https://www.instagram.com/vugriua/" target="_blank" rel="noopener" role="listitem" aria-label="Instagram — vugriua">
+      <div class="left">
+        <div class="social-avatar" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" fill="#fff" /></svg>
+        </div>
+        <div class="social-meta">
+          <div class="social-title">Instagram</div>
+          <div class="social-sub">@vugriua</div>
+        </div>
+      </div>
+      <div class="social-go">Переглянути →</div>
+    </a>
+
+    <!-- Facebook -->
+    <a class="social-card social-facebook" href="https://www.facebook.com/vugriua/" target="_blank" rel="noopener" role="listitem" aria-label="Facebook — vugriua">
+      <div class="left">
+        <div class="social-avatar" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M15 3h3v4h-3v14h-4V7H9V3h4V1h2v2z" fill="#fff"/></svg>
+        </div>
+        <div class="social-meta">
+          <div class="social-title">Facebook</div>
+          <div class="social-sub">facebook.com/vugriua</div>
+        </div>
+      </div>
+      <div class="social-go">Перейти →</div>
+    </a>
+  </section>
+
+  <!-- Layout: left = form + faq, right = info + map -->
+  <div class="layout" role="region" aria-label="Контактна інформація та форма">
+    <!-- LEFT -->
+    <div>
+      <section class="form-card" aria-labelledby="form-heading">
+        <h2 id="form-heading">Напишіть нам</h2>
+
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert {{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+
+        <form id="contactForm" method="post" action="{% url 'contact' %}" novalidate>
+          {% csrf_token %}
+          <div class="field-group">
+            <div class="field">
+              <label for="id_name">Ім'я</label>
+              <input id="id_name" name="name" type="text" required placeholder="Ваше ім'я">
+            </div>
+            <div class="field">
+              <label for="id_phone">Телефон</label>
+              <input id="id_phone" name="phone" type="tel" required placeholder="+380...">
+            </div>
+          </div>
+
+          <div class="field-group">
+            <div class="field">
+              <label for="id_email">Email</label>
+              <input id="id_email" name="email" type="email" placeholder="email@example.com">
+            </div>
+            <div class="field">
+              <label for="id_subject">Тема</label>
+              <input id="id_subject" name="subject" type="text" placeholder="Коротко про питання">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="id_message">Повідомлення</label>
+            <textarea id="id_message" name="message" required placeholder="Опишіть ваше питання..."></textarea>
+          </div>
+
+          <div class="actions-row">
+            <button type="submit" class="btn-send">Відправити</button>
+            <button type="reset" class="btn-reset">Очистити</button>
+            <div style="margin-left:auto;color:var(--muted);font-size:13px">Відповідаємо протягом 24 годин</div>
+          </div>
+        </form>
+      </section>
+
+      <section style="margin-top:18px" aria-labelledby="faq-heading">
+        <h3 id="faq-heading" style="color:var(--fg);margin-bottom:8px">Поширені питання</h3>
+        <div class="faq">
+          <div class="faq-item">
+            <button class="q" type="button" aria-expanded="false">Скільки часу займає доставка? <span>+</span></button>
+            <div class="a">Доставка по Україні зазвичай 1–3 робочих дні в залежності від міста і обраної служби доставки.</div>
+          </div>
+          <div class="faq-item">
+            <button class="q" type="button" aria-expanded="false">Чи є гарантії на товар? <span>+</span></button>
+            <div class="a">Так, ми гарантуємо якість. У випадку проблем — зв'яжіться з нами для вирішення питання.</div>
           </div>
         </div>
-        <div class="social-go">Перейти →</div>
-      </a>
-
-      <a class="social-card" href="https://www.tiktok.com/@vugri.ua?_t=ZM-8sNrVqtO9IL&_r=1" target="_blank" rel="noopener">
-        <div class="social-left">
-          <div class="social-icon tt">T</div>
-          <div>
-            <div class="social-title">TikTok</div>
-            <div class="social-sub">@vugri.ua</div>
-          </div>
-        </div>
-        <div class="social-go">Перейти →</div>
-      </a>
-
-      <a class="social-card" href="https://t.me/vugriua" target="_blank" rel="noopener">
-        <div class="social-left">
-          <div class="social-icon tg">TG</div>
-          <div>
-            <div class="social-title">Telegram</div>
-            <div class="social-sub">t.me/vugriua</div>
-          </div>
-        </div>
-        <div class="social-go">Перейти →</div>
-      </a>
-
-      <a class="social-card" href="https://www.threads.com/@vugriua?igshid=NTc4MTIwNjQ2YQ%3D%3D" target="_blank" rel="noopener">
-        <div class="social-left">
-          <div class="social-icon th">Th</div>
-          <div>
-            <div class="social-title">Threads</div>
-            <div class="social-sub">@vugriua</div>
-          </div>
-        </div>
-        <div class="social-go">Перейти →</div>
-      </a>
-
-      <a class="social-card" href="https://www.instagram.com/vugriua/?igsh=OXJxM2Z0MTh3dGp2&utm_source=qr#" target="_blank" rel="noopener">
-        <div class="social-left">
-          <div class="social-icon ig">IG</div>
-          <div>
-            <div class="social-title">Instagram</div>
-            <div class="social-sub">@vugriua</div>
-          </div>
-        </div>
-        <div class="social-go">Перейти →</div>
-      </a>
-
-      <a class="social-card" href="https://www.facebook.com/vugriua/" target="_blank" rel="noopener">
-        <div class="social-left">
-          <div class="social-icon fb">f</div>
-          <div>
-            <div class="social-title">Facebook</div>
-            <div class="social-sub">facebook.com/vugriua</div>
-          </div>
-        </div>
-        <div class="social-go">Перейти →</div>
-      </a>
+      </section>
     </div>
 
-    <div style="margin-top:22px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px;color:var(--white)">
-      <div style="font-weight:900;margin-bottom:6px">Також можна зателефонувати</div>
-      <div style="color:var(--muted)">Телефон: <strong style="color:var(--white)">+380986666466</strong></div>
-    </div>
-  </main>
+    <!-- RIGHT -->
+    <aside>
+      <div class="info-card" role="region" aria-labelledby="info-title">
+        <h3 id="info-title">Наші контакти</h3>
+        <div style="margin-top:8px" class="info-row">
+          <strong style="color:var(--fg)">Тел:</strong>
+          <a href="tel:+380672102211" style="margin-left:8px;color:var(--muted);font-weight:800">067 210-22-11</a>
+        </div>
+        <div class="info-row">
+          <strong style="color:var(--fg)">Email:</strong>
+          <a href="mailto:ekvatorsmaku@gmail.com" style="margin-left:8px;color:var(--muted);font-weight:700">ekvatorsmaku@gmail.com</a>
+        </div>
+        <div style="margin-top:12px;color:var(--muted)">Адреса: 33015, м. Рівне, вул. Чорновола 91 Г</div>
+
+        <div style="margin-top:12px">
+          <a class="btn-primary" href="{% url 'contact' %}">Зв'язатися</a>
+        </div>
+      </div>
+
+      <div class="map" aria-hidden="false" role="img" aria-label="Карта розташування" style="margin-top:12px">
+       <div class="map" aria-hidden="false" role="img" aria-label="Карта ЛУЦЬК" style="margin-top:12px; height:260px; border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,0.04);">
+  <iframe
+    src="https://www.google.com/maps?q=Луцьк,+Ukraine&z=13&output=embed"
+    width="100%"
+    height="100%"
+    style="border:0;"
+    allowfullscreen=""
+    loading="lazy"
+    referrerpolicy="no-referrer-when-downgrade"
+    title="Карта: Луцьк — VugriUa">
+  </iframe>
+</div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script>
+/* Enhance socials: keyboard accessible focus outlines and optional copy-to-clipboard for handles */
+(function(){
+  // FAQ toggle
+  document.querySelectorAll('.faq .q').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var parent = btn.parentElement;
+      var open = parent.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      var content = parent.querySelector('.a');
+      if(content) content.style.display = open ? 'block' : 'none';
+    });
+  });
+
+  // Basic form validation UX
+  var form = document.getElementById('contactForm');
+  if(form){
+    form.addEventListener('submit', function(e){
+      var name = form.querySelector('[name="name"]');
+      var phone = form.querySelector('[name="phone"]');
+      var message = form.querySelector('[name="message"]');
+      var errors = [];
+      if(!name.value.trim()) errors.push('Вкажіть імʼя');
+      if(!phone.value.trim()) errors.push('Вкажіть телефон');
+      if(!message.value.trim()) errors.push('Напишіть повідомлення');
+      if(errors.length){
+        e.preventDefault();
+        alert(errors.join('\\n'));
+      }
+    });
+  }
+
+  // Add focus outlines to social cards for keyboard users
+  document.querySelectorAll('.social-card').forEach(function(el){
+    el.addEventListener('focus', function(){ el.style.boxShadow = '0 22px 60px rgba(0,0,0,0.6)'; }, true);
+    el.addEventListener('blur', function(){ el.style.boxShadow = ''; }, true);
+  });
+})();
+</script>
 {% endblock %}

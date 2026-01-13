@@ -12,9 +12,13 @@
 .info-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
 .profile-label{color:var(--muted);font-weight:600}
 .profile-value{font-weight:700}
-.change-pass-btn,.profile-btn-secondary{display:block;width:100%;padding:12px;border-radius:10px;margin-top:12px;text-align:center}
-.change-pass-btn{background:#111;color:var(--accent);border:1px solid rgba(255,255,255,0.03)}
-.logout-btn{display:block;width:100%;padding:12px;border-radius:10px;background:linear-gradient(90deg,#c0392b,#e74c3c);color:#fff;border:none;margin-top:10px}
+.controls{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
+.profile-btn{display:inline-block;padding:10px 14px;border-radius:10px;text-align:center;text-decoration:none;color:#fff;background:linear-gradient(90deg,var(--accent),#c94b2f);font-weight:700}
+.profile-btn-outline{display:inline-block;padding:10px 14px;border-radius:10px;text-align:center;text-decoration:none;color:var(--accent);background:transparent;border:1px solid rgba(255,255,255,0.04);font-weight:700}
+.logout-btn{display:block;width:100%;padding:12px;border-radius:10px;background:linear-gradient(90deg,#c0392b,#e74c3c);color:#fff;border:none;margin-top:18px;text-align:center}
+.orders-list{padding-left:18px;color:var(--muted);margin:8px 0}
+.order-item{margin-bottom:6px;color:var(--muted)}
+.order-item .muted-small{color:rgba(255,255,255,0.6);font-size:13px}
 @media(max-width:600px){.profile-container{margin:40px 12px;padding:18px}}
 </style>
 {% endblock %}
@@ -23,35 +27,53 @@
   <div class="profile-container" data-aos="fade-up">
     <div class="profile-header">
       <div class="avatar">{{ user.username|slice:":1"|upper }}</div>
-      <h2 style="color:#fff;margin:0">Профіль VugriUkraine</h2>
+      <h2 style="color:#fff;margin:0">Профіль — {{ user.username }}</h2>
       <div style="color:var(--muted)">Ласкаво просимо! Тут ви можете переглянути свої замовлення та налаштувати акаунт.</div>
     </div>
 
-    <div class="profile-info">
+    <div class="profile-info" role="region" aria-label="Інформація користувача">
       <div class="info-row"><span class="profile-label">Логін:</span><span class="profile-value">{{ user.username }}</span></div>
       <div class="info-row"><span class="profile-label">Email:</span><span class="profile-value">{{ user.email|default:"Не вказано" }}</span></div>
       <div class="info-row"><span class="profile-label">Дата реєстрації:</span><span class="profile-value">{{ user.date_joined|date:'d.m.Y H:i' }}</span></div>
     </div>
 
     <div class="profile-balance" style="margin-top:12px">
-      <div class="info-row"><span class="profile-label">Баланс:</span><span class="profile-value">{% if user.profile.balance %}{{ user.profile.balance }} грн{% else %}0.00 грн{% endif %}</span></div>
+      <div class="info-row">
+        <span class="profile-label">Баланс:</span>
+        <span class="profile-value">
+          {% if user.profile and user.profile.balance %}
+            {{ user.profile.balance }} грн
+          {% else %}
+            0.00 грн
+          {% endif %}
+        </span>
+      </div>
     </div>
 
     <div class="profile-tickets" style="margin-top:12px">
       <div class="info-row" style="flex-direction:column;align-items:flex-start;padding:0">
         <span class="profile-label" style="margin-bottom:8px">Ваші замовлення вугра:</span>
-        <ul style="padding-left:18px;color:var(--muted)">
+        <ul class="orders-list" aria-live="polite">
           {% for order in orders %}
-            <li>Замовлення #{{ order.id }} — {{ order.product.name }} — {{ order.quantity }} г — {{ order.total_price }} грн — {{ order.created_at|date:'d.m.Y H:i' }}</li>
+            <li class="order-item">
+              Замовлення #{{ order.id }} —
+              {{ order.product.name }} —
+              {{ order.quantity_g }} г —
+              {{ order.total_price|floatformat:2 }} грн
+              <div class="muted-small">Створено: {{ order.created_at|date:'d.m.Y H:i' }}</div>
+            </li>
           {% empty %}
-            <li>У вас ще немає замовлень.</li>
+            <li class="order-item">У вас ще немає замовлень.</li>
           {% endfor %}
         </ul>
       </div>
     </div>
 
-
-    <a href="#" class="profile-btn-secondary" onclick="alert('Функція у розробці')">✉️ Змінити email</a>
+    <div class="controls" role="group" aria-label="Дії користувача">
+      <a href="{% url 'password_change' %}" class="profile-btn">🔒 Змінити пароль</a>
+      <a href="{% url 'password_reset' %}" class="profile-btn-outline">❓ Забули пароль?</a>
+      <a href="#" class="profile-btn-outline" onclick="alert('Функція зміни email у розробці')">✉️ Змінити email</a>
+    </div>
 
     <form method="post" action="{% url 'logout' %}">
       {% csrf_token %}

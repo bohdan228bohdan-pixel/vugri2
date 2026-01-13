@@ -2,194 +2,428 @@
 <!doctype html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>{% block title %}VugriUkraine{% endblock %}</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>{% block title %}VugriUa{% endblock %}</title>
 
-  <!-- Global CSS -->
-  <link rel="stylesheet" href="{% static 'styles.css' %}">
-  <!-- Mobile overrides -->
-  <link rel="stylesheet" href="{% static 'mobile.css' %}" media="screen and (max-width:980px)">
-
+  <!-- Inline CSS: dark theme + mobile fixes (hide overflowing header buttons on small screens) -->
   <style>
-    /* Small safe header styles (fallback if your main CSS is missing) */
     :root{
-      --white:#ffffff;
-      --muted:#9aa0a6;
-      --accent:#27d39c;
-      --accent-red:#e74c3c;
-      --header-bg:#0b0c0d;
-      --container-w:1100px;
+      --bg: #050505;
+      --panel: rgba(255,255,255,0.02);
+      --muted: #9aa0a6;
+      --fg: #eaeaea;
+      --accent: #e75b2e;
+      --accent-2: #ff7a4d;
+      --max-w: 1200px;
+      --header-h: 72px;
+      --gutter: 16px;
+      --radius: 10px;
     }
 
-    .skip-link{ position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden; }
-    .skip-link:focus{left:8px;top:8px;width:auto;height:auto;padding:8px 12px;background:#000;color:#fff;z-index:99999;border-radius:6px;}
+    /* Reset */
+    *,*::before,*::after { box-sizing: border-box; }
+    html,body { height:100%; margin:0; overflow-x:hidden; }
+    body {
+      font-family: Inter, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--muted);
+      -webkit-font-smoothing:antialiased;
+    }
+    a { color:inherit; text-decoration:none; }
+    img { display:block; max-width:100%; height:auto; }
 
-    .site-header{
-      background:var(--header-bg);
-      padding:10px 16px;
+    /* Container */
+    .site-inner { max-width:var(--max-w); margin:0 auto; padding:0 var(--gutter); box-sizing:border-box; }
+
+    /* Header */
+    header.site-header {
+      position:sticky; top:0; z-index:1400;
+      background: linear-gradient(180deg,#050505,#0b0b0c);
       border-bottom:1px solid rgba(255,255,255,0.03);
-      position:sticky;
-      top:0;
-      z-index:10000;
     }
-    .site-header-inner{
-      max-width:var(--container-w);
-      margin:0 auto;
+    .site-header .inner {
+      height: var(--header-h);
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:12px;
+      padding:0 var(--gutter);
       box-sizing:border-box;
     }
-    .site-brand{ display:flex; align-items:center; gap:12px; text-decoration:none; color:var(--white); font-weight:800; }
-    .site-brand img{ height:40px; display:block; object-fit:contain; }
-    .site-nav{ display:flex; gap:14px; align-items:center; }
-    .site-nav a{ color:var(--muted); text-decoration:none; padding:8px 10px; border-radius:8px; font-weight:700; }
-    .site-nav a:hover, .site-nav a:focus{ color:var(--white); background: rgba(255,255,255,0.02); outline:none; }
-    .cta{ background:var(--accent-red); color:#fff; padding:8px 12px; border-radius:8px; text-decoration:none; font-weight:800; }
-    .mobile-nav-toggle{
-      display:none;
-      background:transparent;
-      border:0;
-      color:var(--white);
-      font-size:22px;
-      padding:8px;
-      cursor:pointer;
-    }
-    .auth-pill{ display:inline-flex; align-items:center; border-radius:999px; overflow:hidden; background:transparent; border:1px solid rgba(255,255,255,0.03); }
-    .auth-pill__left, .auth-pill__right{ padding:7px 10px; text-decoration:none; color:var(--white); font-weight:700; display:inline-block; }
-    .auth-pill__left{ color:var(--muted); border-right:1px solid rgba(255,255,255,0.03); }
-    .auth-pill__right{ background:linear-gradient(90deg,var(--accent-red),#ff6b57); color:#fff; }
 
-    /* Mobile styles */
+    .header-left { display:flex; align-items:center; gap:8px; min-width:0; flex:1; }
+    .search-form { display:flex; gap:8px; width:100%; max-width:420px; align-items:center; }
+    .search-input {
+      flex:1;
+      padding:9px 12px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.01);
+      color:var(--fg);
+      font-weight:700;
+    }
+    .search-btn{ background:transparent;border:0;color:var(--muted);cursor:pointer;padding:6px }
+
+    .site-logo { display:flex; align-items:center; justify-content:center; flex:0 0 auto; pointer-events:none; }
+    .site-logo a { pointer-events:auto; display:inline-flex; align-items:center; gap:10px; }
+    .site-logo img { height:46px; }
+
+    .header-right { display:flex; align-items:center; gap:8px; justify-content:flex-end; flex:1; min-width:0; }
+    .ctrl { background:transparent;border:0;color:var(--muted);padding:8px;border-radius:8px;cursor:pointer;font-weight:800; display:inline-flex; align-items:center; gap:8px }
+    .ctrl.icon { font-size:18px }
+
+    /* Make sure header children don't force overflow */
+    .header-right, .header-left { min-width:0; }
+
+    /* Desktop nav */
+    nav.nav-row { background: linear-gradient(180deg,#050505,#0b0b0c); border-bottom:1px solid rgba(255,255,255,0.03); }
+    nav.nav-row .nav-inner { display:flex; gap:14px; padding:10px var(--gutter); justify-content:center; flex-wrap:wrap; }
+    nav.nav-row a { color:var(--muted); padding:8px 10px; border-radius:8px; font-weight:700; }
+    nav.nav-row a:hover { color:var(--fg); background:rgba(255,255,255,0.02); }
+
+    /* Catalog dropdown */
+    .catalog-btn { position:relative; }
+    .catalog-panel {
+      position:absolute; top:calc(100% + 8px); left:0;
+      min-width:260px; max-width:420px;
+      background: linear-gradient(180deg,#0f0f10,#0b0b0c);
+      border:1px solid rgba(255,255,255,0.04); border-radius:10px; padding:10px; box-shadow:0 18px 48px rgba(0,0,0,0.6);
+      display:none; z-index:1300;
+    }
+    .catalog-panel.show{ display:block; }
+    .catalog-panel a{ display:block; padding:8px; color:var(--muted); border-radius:6px; }
+    .catalog-panel a:hover{ color:var(--fg); background:rgba(255,255,255,0.02); }
+
+    /* Mobile drawer */
+    #mobileDrawer { display:none; }
+    body.nav-open #mobileDrawer {
+      display:flex; position:fixed; left:0; right:0; top:var(--header-h); bottom:0;
+      background: linear-gradient(180deg,#060606,#080808); z-index:1400; padding:12px; flex-direction:column; gap:8px; overflow:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+    #mobileDrawer a { display:block; padding:12px; border-radius:10px; background: rgba(255,255,255,0.02); color:var(--fg); font-weight:800; }
+
+    /* Footer */
+    footer.site-footer { padding:32px var(--gutter); background: linear-gradient(180deg,#070707,#0b0b0c); color:var(--muted); }
+    .footer-inner { max-width:var(--max-w); margin:0 auto; display:grid; grid-template-columns:260px 1fr 1fr 320px; gap:24px; }
+
+    /* Products */
+    .products-grid { display:grid; gap:18px; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); }
+    .product-card { background:var(--panel); border-radius:12px; padding:12px; color:var(--fg); border:1px solid rgba(255,255,255,0.03); }
+
+    /* Utility: hide-on-mobile class (we'll use this to hide overflowing buttons on phones) */
+    .hide-on-mobile { display:inline-flex; align-items:center; gap:8px; }
+
+    /* Responsive rules */
     @media (max-width:980px){
-      .mobile-nav-toggle{ display:inline-flex; }
-      .site-nav{
-        display:none;
-        position:fixed;
-        left:0;
-        right:0;
-        top:56px;
-        bottom:0;
-        background:var(--header-bg);
-        flex-direction:column;
-        gap:0;
-        padding:12px;
-        overflow:auto;
-      }
-      .site-nav.open{ display:flex; }
-      .site-nav a{ padding:12px 10px; width:100%; box-sizing:border-box; }
+      .search-form { max-width:200px; }
+      nav.nav-row .nav-inner { display:none; }
+      .site-logo { pointer-events:auto; order:0; margin:0 auto; }
+      .mobile-nav-toggle { display:inline-flex; width:44px; height:44px; align-items:center; justify-content:center; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:var(--muted); cursor:pointer; }
+
+      .catalog-panel { position: fixed; left:12px; right:12px; top: calc(var(--header-h) + 8px); max-height:72vh; overflow:auto; }
+      .site-inner { padding-left:12px; padding-right:12px; }
     }
 
-    /* small helper */
-    .cart-link{ color:var(--muted); margin-left:8px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+    /* Mobile specific: hide the problematic header buttons and compact layout */
+    @media (max-width:480px){
+      .site-header .inner { padding:6px 12px; height:64px; }
+      .site-logo img { height:36px; }
+
+      /* hide inline search to free space */
+      .search-form { display:none; }
+
+      /* Make header-right compact and limit width so buttons don't overflow */
+      .header-right {
+        flex:0 0 auto;
+        gap:8px;
+        align-items:center;
+        max-width:48%;
+        box-sizing:border-box;
+      }
+
+      /* Hide buttons that cause overflow on phones. Keep Catalog, Cart and Burger visible.
+         Apply class="hide-on-mobile" to elements you want hidden on phones (we added them below).
+      */
+      .hide-on-mobile { display:none !important; }
+
+      /* Ensure burger visible */
+      #mobileNavToggle, .mobile-nav-toggle { display:inline-flex !important; }
+
+      /* Add a prominent catalog CTA like the example (can be shown in homepage template as well) */
+      .catalog-cta {
+        display:block;
+        background:#fff;
+        color:#111;
+        margin:12px;
+        padding:12px 14px;
+        border-radius:12px;
+        font-weight:900;
+        text-align:center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+      }
+
+      /* Hits track small-card styles */
+      .hits-track { display:flex; gap:12px; padding:12px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+      .card-mini { flex:0 0 160px; min-width:160px; background:var(--panel); padding:8px; border-radius:10px; text-align:center; }
+      .card-mini img { height:110px; object-fit:cover; border-radius:8px; }
+
+      /* Footer accordion layout */
+      .footer-inner { grid-template-columns:1fr; gap:14px; padding:18px; }
+    }
+
+    /* Accessibility */
+    a:focus, button:focus, input:focus, textarea:focus { outline:3px solid rgba(231,91,46,0.12); outline-offset:2px; }
+    .sr-only { position:absolute; left:-9999px; }
   </style>
 
   {% block head_extra %}{% endblock %}
 </head>
 <body>
-  <a class="skip-link" href="#content">Пропустити до контенту</a>
+  <div class="site-inner">
+    <!-- Header -->
+    <header class="site-header" role="banner" aria-label="Головна шапка">
+      <div class="inner">
+        <div class="header-left" style="min-width:0">
+          <form class="search-form" action="{% url 'products' %}" method="get" role="search" aria-label="Пошук товарів">
+            <input class="search-input" name="q" type="search" placeholder="пошук товарів" aria-label="Пошук товарів">
+            <button class="search-btn" type="submit" aria-label="Шукати">🔍</button>
+          </form>
+        </div>
 
-  <header class="site-header" role="banner" aria-label="Головна шапка сайту">
-    <div class="site-header-inner">
-      <a class="site-brand" href="/">
-        <img src="{% static 'images/png/logo.png' %}" alt="VugriUkraine">
-        <span>VugriUkraine</span>
-      </a>
+        <div class="site-logo" aria-hidden="false">
+          <a href="{% url 'homepage' %}">
+            <img src="{% static 'images/png/logo.png' %}" alt="VugriUa">
+          </a>
+        </div>
 
-      <div style="display:flex;align-items:center;gap:12px">
-        <button id="mobileNavToggle" class="mobile-nav-toggle" aria-expanded="false" aria-controls="siteNav" aria-label="Відкрити меню">☰</button>
+        <div class="header-right" aria-hidden="false">
+          <div class="catalog-btn" style="position:relative;">
+            <button id="catalogToggle" class="ctrl" aria-haspopup="true" aria-expanded="false" title="Каталог">📂 Каталог ▾</button>
+            <div id="catalogPanel" class="catalog-panel" role="menu" aria-hidden="true">
+              <form action="{% url 'products' %}" method="get" class="cat-search" style="margin-bottom:8px">
+                <input name="q" type="search" placeholder="Пошук у каталозі" aria-label="Пошук у каталозі" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--fg)">
+              </form>
+              <a href="{% url 'products' %}">Усі продукти</a>
+              <a href="{% url 'products' %}?category=Ікра">Ікра</a>
+              <a href="{% url 'products' %}?category=Печінка тріски">Печінка тріски</a>
+              <a href="{% url 'products' %}?category=Делікатеси">Делікатеси</a>
+            </div>
+          </div>
 
-        <nav id="siteNav" class="site-nav" aria-label="Головне меню" role="navigation">
-          <a href="/">Головна</a>
-          <a href="/products/">Каталог</a>
-          <a href="/cart/" class="cart-link">Кошик <span id="cart-count">{{ cart_count|default:"0" }}</span></a>
-          <a href="/favorites/">❤ Обране</a>
-          <a href="/about/">Про нас</a>
-          <a href="/contact/">Контакти</a>
+          <!-- chat: hide on mobile to prevent overflow -->
+          <a href="{% url 'my_conversations' %}" class="ctrl icon hide-on-mobile" title="Чати">Чати💬</a>
 
           {% if user.is_authenticated %}
-            <a href="/profile/" class="cta" style="margin-left:10px">Профіль</a>
-            <form method="post" action="/logout/" style="display:inline;margin-left:8px">
+            <a href="{% url 'profile' %}" class="ctrl hide-on-mobile" title="Профіль">
+              {% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}
+            </a>
+            <form method="post" action="/logout/" style="display:inline;margin:0" class="hide-on-mobile">
               {% csrf_token %}
-              <button type="submit" class="cta" style="background:transparent;border:1px solid rgba(255,255,255,0.12);color:var(--white)">Вийти</button>
+              <button type="submit" class="ctrl" title="Вийти">Вийти</button>
             </form>
           {% else %}
-            <div class="auth-pill" style="margin-left:10px">
-              <a href="/login/" class="auth-pill__left">Вхід</a>
-              <a href="/register/" class="auth-pill__right">Реєстрація</a>
-            </div>
+            <a href="{% url 'login' %}" class="ctrl hide-on-mobile" title="Вхід">Вхід</a>
+            <a href="{% url 'register' %}" class="ctrl hide-on-mobile" title="Реєстрація" style="background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:8px 10px;border-radius:8px">Реєстрація</a>
           {% endif %}
-        </nav>
-      </div>
-    </div>
-  </header>
 
-  <main id="content" class="site-main" role="main">
+          <!-- favorites: hide on mobile -->
+          <a href="{% url 'favorites' %}" class="ctrl icon hide-on-mobile" title="Обране">Обране♡</a>
+
+          <!-- cart: keep visible on mobile -->
+          <a href="{% url 'cart' %}" class="ctrl icon" title="Кошик">🧺</a>
+
+          <!-- burger: visible only on mobile -->
+          <button id="mobileNavToggle" class="mobile-nav-toggle sr-only" aria-controls="mobileDrawer" aria-expanded="false" aria-label="Відкрити меню">☰</button>
+        </div>
+      </div>
+    </header>
+  </div>
+
+  <!-- Desktop nav -->
+  <nav class="nav-row" role="navigation" aria-label="Категорії">
+    <div class="nav-inner site-inner">
+      <a href="{% url 'products' %}?category=Ікра">Ікра</a>
+      <a href="{% url 'products' %}?category=Печінка тріски">Печінка тріски</a>
+      <a href="{% url 'products' %}?category=В'ялена риба та ікра">В'ялена риба та ікра</a>
+      <a href="{% url 'products' %}?category=Делікатеси">Делікатеси</a>
+      <a href="{% url 'products' %}?category=Креветки">Креветки</a>
+      <a href="{% url 'products' %}?category=Морепродукти">Морепродукти</a>
+      <a href="{% url 'products' %}?filter=hits">Хіти продажу</a>
+    </div>
+  </nav>
+
+  <!-- Mobile drawer -->
+  <div id="mobileDrawer" aria-hidden="true">
+    {% if user.is_authenticated %}
+      <a href="{% url 'profile' %}">Профіль</a>
+      <form method="post" action="/logout/" style="display:block;margin:0">
+        {% csrf_token %}
+        <button type="submit" class="ctrl" style="width:100%;text-align:left;background:transparent;border:0;padding:12px;color:var(--fg)">Вийти</button>
+      </form>
+    {% else %}
+      <a href="{% url 'login' %}">Вхід</a>
+      <a href="{% url 'register' %}">Реєстрація</a>
+    {% endif %}
+    <a href="{% url 'homepage' %}">Головна</a>
+    <a href="{% url 'cart' %}">Кошик</a>
+    <a href="{% url 'favorites' %}">Обране</a>
+    <a href="{% url 'my_conversations' %}">Чати</a>
+    <a href="{% url 'contact' %}">Контакти</a>
+    <a href="{% url 'products' %}">Усі продукти</a>
+    <a href="{% url 'products' %}?category=Ікра">Ікра</a>
+    <a href="{% url 'products' %}?category=Делікатеси">Делікатеси</a>
+  </div>
+
+  <main id="content" role="main" class="site-inner">
     {% block content %}{% endblock %}
   </main>
 
-  <footer style="background:#080808;padding:24px;margin-top:40px;color:var(--muted)">
-    <div style="max-width:var(--container-w);margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-      <div>© VugriUkraine — Свіжий вугор</div>
-      <div>Тел: <strong>+380986666466</strong></div>
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <div>
+        <a href="{% url 'homepage' %}"><img src="{% static 'images/png/logo.png' %}" alt="VugriUa" style="max-width:220px"></a>
+        <div style="margin-top:10px;color:var(--muted)">© 2014-{% now "Y" %}</div>
+      </div>
+
+      <div class="footer-col accordion" data-acc>
+        <button class="accordion-toggle" aria-expanded="false">Каталог <span class="acc-sign" aria-hidden="true">+</span></button>
+        <div class="accordion-panel">
+          <ul style="list-style:none;padding-left:0;margin:8px 0 0 0">
+            <li><a href="{% url 'products' %}">Усі продукти</a></li>
+            <li><a href="{% url 'products' %}?category=Ікра">Ікра</a></li>
+            <li><a href="{% url 'products' %}?category=Делікатеси">Делікатеси</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-col accordion" data-acc>
+        <button class="accordion-toggle" aria-expanded="false">Клієнтам <span class="acc-sign" aria-hidden="true">+</span></button>
+        <div class="accordion-panel">
+          <ul style="list-style:none;padding-left:0;margin:8px 0 0 0">
+            <li><a href="{% url 'login' %}">Вхід</a></li>
+            <li><a href="{% url 'about' %}">Про нас</a></li>
+            <li><a href="{% url 'contact' %}">Оплата і доставка</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-col accordion" data-acc>
+        <button class="accordion-toggle" aria-expanded="false">Контакти <span class="acc-sign" aria-hidden="true">+</span></button>
+        <div class="accordion-panel">
+          <div style="color:var(--muted)">
+            <div><strong style="color:var(--fg)">098 666-64-66</strong></div>
+            <div style="margin-top:6px"><a href="mailto:ekvatorsmaku@gmail.com">...@gmail.com</a></div>
+            <div style="margin-top:6px">Луцьк</div>
+          </div>
+        </div>
+      </div>
     </div>
   </footer>
 
-  <!-- Inline mobile nav behavior (fallback, robust) -->
+  <!-- Inline JS: catalog, mobile drawer, footer accordion -->
   <script>
-  (function(){
-    const toggle = document.getElementById('mobileNavToggle');
-    const nav = document.getElementById('siteNav');
-    if(!toggle || !nav) return;
+    (function(){
+      const MOBILE_BREAK = 980;
+      const body = document.body;
 
-    // helper to set aria-expanded and body scroll lock
-    function setOpen(isOpen){
-      if(isOpen){
-        nav.classList.add('open');
-        toggle.setAttribute('aria-expanded','true');
-        document.documentElement.style.overflow = 'hidden';
-        document.body.style.overflow = 'hidden';
-      } else {
-        nav.classList.remove('open');
-        toggle.setAttribute('aria-expanded','false');
-        document.documentElement.style.overflow = '';
-        document.body.style.overflow = '';
+      // Catalog dropdown toggle
+      const catalogToggle = document.getElementById('catalogToggle');
+      const catalogPanel = document.getElementById('catalogPanel');
+      if(catalogToggle && catalogPanel){
+        catalogToggle.addEventListener('click', function(e){
+          e.stopPropagation();
+          const open = catalogPanel.classList.toggle('show');
+          catalogToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          catalogPanel.setAttribute('aria-hidden', open ? 'false' : 'true');
+        });
+        document.addEventListener('click', function(e){
+          if(!catalogPanel.contains(e.target) && !catalogToggle.contains(e.target)){
+            catalogPanel.classList.remove('show');
+            catalogToggle.setAttribute('aria-expanded','false');
+            catalogPanel.setAttribute('aria-hidden','true');
+          }
+        }, {passive:true});
+        document.addEventListener('keydown', function(e){
+          if(e.key === 'Escape') {
+            catalogPanel.classList.remove('show');
+            catalogToggle.setAttribute('aria-expanded','false');
+          }
+        });
       }
-    }
 
-    toggle.addEventListener('click', function(e){
-      e.preventDefault();
-      setOpen(!nav.classList.contains('open'));
-    }, {passive:false});
+      // Mobile drawer toggle (works only on small widths)
+      const mobileToggle = document.getElementById('mobileNavToggle');
+      const mobileDrawer = document.getElementById('mobileDrawer');
 
-    toggle.addEventListener('touchstart', function(e){
-      e.preventDefault();
-      setOpen(!nav.classList.contains('open'));
-    }, {passive:false});
+      function updateMobileToggleVisibility(){
+        if(window.innerWidth <= MOBILE_BREAK){
+          mobileToggle && mobileToggle.classList.remove('sr-only');
+        } else {
+          mobileToggle && mobileToggle.classList.add('sr-only');
+          if(body.classList.contains('nav-open')){
+            body.classList.remove('nav-open');
+            body.style.overflow = '';
+            mobileToggle && mobileToggle.setAttribute('aria-expanded','false');
+          }
+        }
+      }
+      updateMobileToggleVisibility();
+      window.addEventListener('resize', updateMobileToggleVisibility);
 
-    // close on Escape
-    document.addEventListener('keydown', function(e){
-      if(e.key === 'Escape' && nav.classList.contains('open')) setOpen(false);
-    });
+      if(mobileToggle){
+        mobileToggle.addEventListener('click', function(e){
+          if(window.innerWidth > MOBILE_BREAK) return;
+          e.preventDefault();
+          const open = body.classList.toggle('nav-open');
+          mobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          body.style.overflow = open ? 'hidden' : '';
+          // close catalog if open to avoid overlap
+          if(open && catalogPanel && catalogPanel.classList.contains('show')) catalogPanel.classList.remove('show');
+        }, {passive:false});
+      }
 
-    // close on outside click (mobile)
-    document.addEventListener('click', function(e){
-      if(!nav.classList.contains('open')) return;
-      if(!nav.contains(e.target) && !toggle.contains(e.target)) setOpen(false);
-    }, {passive:true});
+      // Close drawer when clicking a link inside it
+      if(mobileDrawer){
+        mobileDrawer.addEventListener('click', function(e){
+          const a = e.target.closest('a');
+          if(a && body.classList.contains('nav-open')){
+            body.classList.remove('nav-open');
+            mobileToggle && mobileToggle.setAttribute('aria-expanded','false');
+            body.style.overflow = '';
+          }
+        });
+      }
 
-    // close when clicking a link inside nav (good mobile UX)
-    nav.addEventListener('click', function(e){
-      const link = e.target.closest('a');
-      if(!link) return;
-      // allow modifier keys (open in new tab) — only close for normal clicks
-      if(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-      // small delay so navigation starts (if internal) then close
-      setTimeout(()=> setOpen(false), 50);
-    });
-  })();
+      // Footer accordion for mobile
+      document.querySelectorAll('.footer-col.accordion').forEach(function(col){
+        const btn = col.querySelector('.accordion-toggle');
+        const panel = col.querySelector('.accordion-panel');
+        if(!btn || !panel) return;
+        function sync(){
+          if(window.innerWidth <= MOBILE_BREAK){
+            panel.style.display = col.classList.contains('open') ? 'block' : 'none';
+            btn.querySelector('.acc-sign').textContent = col.classList.contains('open') ? '−' : '+';
+            btn.setAttribute('aria-expanded', col.classList.contains('open') ? 'true' : 'false');
+          } else {
+            panel.style.display = 'block';
+            btn.querySelector('.acc-sign').textContent = '';
+            btn.setAttribute('aria-expanded', 'true');
+          }
+        }
+        btn.addEventListener('click', function(){
+          if(window.innerWidth > MOBILE_BREAK) return;
+          col.classList.toggle('open');
+          sync();
+        });
+        window.addEventListener('resize', sync);
+        sync();
+      });
+
+      // Safety: prevent accidental horizontal scroll
+      document.documentElement.style.maxWidth = '100%';
+    })();
   </script>
 
   {% block scripts %}{% endblock %}

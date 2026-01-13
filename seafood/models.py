@@ -2,12 +2,19 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+
 class SeafoodProduct(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     price_per_100g = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
+
+    # Availability flag (new)
+    in_stock = models.BooleanField(
+        default=True,
+        help_text="True — в наявності; False — немає в наявності"
+    )
 
     class Meta:
         verbose_name = "Продукт"
@@ -17,6 +24,7 @@ class SeafoodProduct(models.Model):
     def __str__(self):
         return self.name
 
+
 class EmailVerification(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     code = models.CharField(max_length=6)
@@ -24,6 +32,7 @@ class EmailVerification(models.Model):
 
     def __str__(self):
         return f"{self.user.username} ({self.code})"
+
 
 class Order(models.Model):
     product = models.ForeignKey(SeafoodProduct, on_delete=models.CASCADE)
@@ -72,6 +81,7 @@ class Order(models.Model):
     def __str__(self):
         return f"Order#{self.id} {self.full_name} {self.product.name}"
 
+
 class Favorite(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='favorites')
     product = models.ForeignKey(SeafoodProduct, on_delete=models.CASCADE, related_name='favorited_by')
@@ -85,6 +95,7 @@ class Favorite(models.Model):
 
     def __str__(self):
         return f'{self.user} — {self.product}'
+
 
 class Review(models.Model):
     RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
@@ -103,6 +114,7 @@ class Review(models.Model):
     def __str__(self):
         return f'Review {self.rating} by {self.user}'
 
+
 class ProductImage(models.Model):
     product = models.ForeignKey(SeafoodProduct, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='products/%Y/%m/')
@@ -118,6 +130,7 @@ class ProductImage(models.Model):
     def __str__(self):
         return f'{self.product} — image #{self.id}'
 
+
 class Conversation(models.Model):
     participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='conversations')
     order = models.OneToOneField(Order, on_delete=models.CASCADE, null=True, blank=True, related_name='conversation')
@@ -131,6 +144,7 @@ class Conversation(models.Model):
     def __str__(self):
         parts = ', '.join([str(u) for u in self.participants.all()[:3]])
         return f"Conversation #{self.id} ({parts})"
+
 
 class Message(models.Model):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
