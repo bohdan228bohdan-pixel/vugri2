@@ -30,6 +30,7 @@ from .models import (
     Order,
     OrderItem,
     SeafoodProduct,
+    Category,
     Favorite,
     Review,
     ProductImage,
@@ -134,7 +135,8 @@ def _product_from_db_or_sample(product_id):
             description=prod.description,
             price_per_100g=str(prod.price_per_100g),
             image=img,
-            in_stock=bool(prod.in_stock),  # <-- додано
+            in_stock=bool(prod.in_stock),
+            youtube_url = prod.youtube_url or ''   # <- додано
         )
         return product_obj, prod
 
@@ -163,7 +165,14 @@ def _product_from_db_or_sample(product_id):
 # -----------------------
 
 def homepage(request):
+    # products shown on main page (DB)
     products = SeafoodProduct.objects.all()
+
+    # categories: якщо є модель Category, візьмемо всі
+    try:
+        categories = list(Category.objects.all().order_by('ordering', 'name'))
+    except Exception:
+        categories = []
 
     has_chats = False
     chats_count = 0
@@ -178,6 +187,7 @@ def homepage(request):
 
     return render(request, 'homepage.html', {
         'products': products,
+        'categories': categories,
         'has_chats': has_chats,
         'chats_count': chats_count,
     })
@@ -187,58 +197,36 @@ def products(request):
     """
     Catalog page with optional category filter and sorting.
     Query params:
-      ?category=Категорія&sort=price_asc|price_desc|name_asc|name_desc|newest
+      ?category=<slug>&sort=price_asc|price_desc|name_asc|name_desc|newest
     """
     qs = SeafoodProduct.objects.all()
 
-    # --- Подготовка списка категорий (автоматически из модели, иначе fallback) ---
+    # --- Попробуем загрузить категории как объекты Category (если модель есть) ---
     categories = []
-    cat_field_name = None
+    using_category_model = False
     try:
-        # найти подходящее поле категории в модели (если есть)
-        for f in SeafoodProduct._meta.get_fields():
-            if f.name in ('category', 'category_name', 'cat', 'section'):
-                cat_field_name = f.name
-                break
-
-        if cat_field_name:
-            # если поле реляционное — вытянем названия связанных объектов
-            field = SeafoodProduct._meta.get_field(cat_field_name)
-            if getattr(field, 'is_relation', False) and hasattr(field.related_model, 'name'):
-                categories = list(
-                    field.related_model.objects.filter(
-                        pk__in=SeafoodProduct.objects.exclude(**{f'{cat_field_name}__isnull': True}).values_list(f'{cat_field_name}', flat=True)
-                    ).values_list('name', flat=True)
-                )
-            else:
-                # обычное текстовое поле
-                categories = list(SeafoodProduct.objects.exclude(**{f'{cat_field_name}__isnull': True}).values_list(cat_field_name, flat=True).distinct())
-                # убрать пустые значения
-                categories = [c for c in categories if c]
+        from .models import Category
+        categories = list(Category.objects.all().order_by('ordering', 'name'))
+        using_category_model = True
     except Exception:
         categories = []
 
-    # Фоллбек-список категорий (если в модели нет данных)
+    # Фоллбек — если в БД нет категорий, используем статичный список имен
     if not categories:
         categories = [
             "Ікра", "Печінка тріски", "В'ялена риба та ікра",
             "Делікатеси", "М'ясо краба", "Креветки", "Морепродукти"
         ]
 
-    # --- Применяем фильтр по категории (если передан параметр) ---
+    # --- Применяем фильтр по категории (ожидаем slug если Category есть) ---
     selected_category = request.GET.get('category', '').strip()
     if selected_category:
         try:
-            if cat_field_name:
-                # пытаемся корректно отфильтровать по полю модели
-                field = SeafoodProduct._meta.get_field(cat_field_name)
-                if getattr(field, 'is_relation', False):
-                    # relation: пробуем фильтровать по имени связанной модели
-                    qs = qs.filter(**{f'{cat_field_name}__name__iexact': selected_category})
-                else:
-                    qs = qs.filter(**{f'{cat_field_name}__iexact': selected_category})
+            if using_category_model:
+                # фильтруем по slug связанной категории
+                qs = qs.filter(category__slug__iexact=selected_category)
             else:
-                # если нет определённого поля — фильтруем по вхождению имени категории в название/описание
+                # fallback: фильтруем по вхождению имени в название/описание
                 qs = qs.filter(name__icontains=selected_category)
         except Exception:
             qs = qs.filter(name__icontains=selected_category)
@@ -254,13 +242,12 @@ def products(request):
     elif sort == 'name_desc':
         qs = qs.order_by('-name')
     elif sort == 'newest':
-        # попытка сортировать по полю created/updated, иначе по id убыв.
         if hasattr(SeafoodProduct, 'created_at'):
             qs = qs.order_by('-created_at')
         else:
             qs = qs.order_by('-id')
 
-    # Постраничная выдача (опционально можно добавить), но пока вернём все
+    # favorites for current user
     favorited_ids = set()
     if request.user.is_authenticated:
         try:
@@ -280,33 +267,114 @@ def products(request):
 def product_details(request, product_id):
     """
     Show product page. Uses DB product if exists; otherwise falls back to SAMPLES.
-    Provides 'images' as a list of dicts with keys: url, alt, is_main
+
+    Context:
+      - product: lightweight object for templates (id, name, description, price_per_100g, image.url, in_stock, (optional) youtube_url)
+      - images: list of dicts { url, alt, is_main(bool), is_video(bool), thumb_url(optional) }
+      - is_favorited: bool
+      - reviews, average_rating
+
+    Improvements:
+      - If DB product exists, prefer ProductImage entries (ordered by -is_main, created_at).
+      - If youtube_url present, include a video item in images (is_video=True) with a placeholder thumb.
+      - Ensure there is always at least one image dict (fallback to product.image or placeholder).
+      - Guarantee the image marked is_main appears first in the list.
     """
     product_obj, _db_prod = _product_from_db_or_sample(product_id)
     if not product_obj:
         return render(request, '404.html', status=404)
 
-    # build images list
     images = []
     try:
+        # If we have a DB product, prefer ProductImage rows
         if _db_prod:
-            imgs = _db_prod.images.all()
-            for im in imgs:
+            try:
+                imgs_qs = _db_prod.images.all()  # model ordering already prefers is_main
+            except Exception:
+                imgs_qs = []
+
+            for im in imgs_qs:
                 try:
                     url = im.image.url
                 except Exception:
                     url = static('images/png/placeholder.png')
-                images.append({'url': url, 'alt': getattr(im, 'alt', ''), 'is_main': getattr(im, 'is_main', False)})
+                images.append({
+                    'url': url,
+                    'alt': (getattr(im, 'alt', '') or _db_prod.name),
+                    'is_main': bool(getattr(im, 'is_main', False)),
+                    'is_video': False,
+                    'thumb_url': url,  # can be replaced with a true thumbnail generator
+                })
+
+            # Fallback to product.image if no ProductImage entries were found
             if not images:
-                # fallback to product.image if no ProductImage entries
                 try:
-                    images.append({'url': _db_prod.image.url, 'alt': _db_prod.name, 'is_main': True})
+                    main_img_url = _db_prod.image.url
                 except Exception:
-                    images.append({'url': static('images/png/placeholder.png'), 'alt': product_obj.name, 'is_main': True})
+                    main_img_url = static('images/png/placeholder.png')
+                images.append({
+                    'url': main_img_url,
+                    'alt': _db_prod.name,
+                    'is_main': True,
+                    'is_video': False,
+                    'thumb_url': main_img_url,
+                })
         else:
-            images.append({'url': product_obj.image.url, 'alt': product_obj.name, 'is_main': True})
+            # Non-DB sample product: use the product_obj.image.url provided by _product_from_db_or_sample
+            try:
+                main_img_url = product_obj.image.url
+            except Exception:
+                main_img_url = static('images/png/placeholder.png')
+            images.append({
+                'url': main_img_url,
+                'alt': getattr(product_obj, 'name', ''),
+                'is_main': True,
+                'is_video': False,
+                'thumb_url': main_img_url,
+            })
     except Exception:
-        images = [{'url': product_obj.image.url, 'alt': product_obj.name, 'is_main': True}]
+        # On any unexpected error, ensure at least one placeholder image
+        images = [{
+            'url': static('images/png/placeholder.png'),
+            'alt': getattr(product_obj, 'name', ''),
+            'is_main': True,
+            'is_video': False,
+            'thumb_url': static('images/png/placeholder.png'),
+        }]
+
+    # If the DB product has a YouTube URL (or product_obj provided one), append a video thumb
+    # Video item is appended at the end unless no other images exist.
+    youtube_url = None
+    try:
+        if _db_prod and getattr(_db_prod, 'youtube_url', None):
+            youtube_url = _db_prod.youtube_url
+        elif hasattr(product_obj, 'youtube_url') and product_obj.youtube_url:
+            youtube_url = product_obj.youtube_url
+    except Exception:
+        youtube_url = None
+
+    if youtube_url:
+        # Use a small placeholder thumb for video; front-end JS will extract video id and render embed when clicked
+        video_thumb = static('images/thumbs/video_placeholder.png')
+        # If there are no real images, mark video as is_main
+        is_main_for_video = not any(item.get('is_main') for item in images)
+        images.append({
+            'url': youtube_url,
+            'alt': 'video',
+            'is_main': bool(is_main_for_video),
+            'is_video': True,
+            'thumb_url': video_thumb,
+        })
+
+    # Reorder images so that the first is the one with is_main=True (stable)
+    try:
+        main_index = next((i for i, it in enumerate(images) if it.get('is_main')), None)
+        if main_index is not None and main_index != 0:
+            main_item = images.pop(main_index)
+            images.insert(0, main_item)
+    except Exception:
+        # ignore reorder errors
+        pass
 
     # is_favorited
     is_favorited = False
@@ -336,7 +404,7 @@ def product_details(request, product_id):
         'is_favorited': is_favorited,
         'reviews': reviews,
         'average_rating': average_rating,
-        'product.youtube_url': product.youtube_url if hasattr(product, 'youtube_url') else None
+        'youtube_url': youtube_url
     })
 
 

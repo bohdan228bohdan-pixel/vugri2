@@ -2,6 +2,33 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from decimal import Decimal
+from django.utils.text import slugify
+
+
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=110, unique=True, blank=True)
+    description = models.TextField(blank=True)
+    ordering = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['ordering', 'name']
+        verbose_name = "Категорія"
+        verbose_name_plural = "Категорії"
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name) or 'cat'
+            slug = base
+            i = 1
+            while Category.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{i}"
+                i += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
 
 
 class SeafoodProduct(models.Model):
@@ -12,7 +39,10 @@ class SeafoodProduct(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     youtube_url = models.URLField(blank=True, null=True)
 
-    # Availability flag (new)
+    # Category relation (optional)
+    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name='products')
+
+    # Availability flag
     in_stock = models.BooleanField(
         default=True,
         help_text="True — в наявності; False — немає в наявності"
@@ -37,7 +67,7 @@ class EmailVerification(models.Model):
 
 
 class Order(models.Model):
-    # product kept for compatibility; now nullable because order may contain many items
+    # product kept for compatibility; nullable because order may contain many items
     product = models.ForeignKey(SeafoodProduct, on_delete=models.CASCADE, null=True, blank=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
 
@@ -49,16 +79,14 @@ class Order(models.Model):
     postal = models.CharField(max_length=50, blank=True)
     branch = models.CharField(max_length=150, blank=True)
 
-    # summary fields (kept for quick display, will reflect aggregated items)
     quantity_g = models.PositiveIntegerField(default=100)
     total_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
 
     status = models.CharField(max_length=30, default='created')
 
-    # payment fields
     PAYMENT_METHOD_CHOICES = (
-        ('card', 'Оплата на картку Приват'),
-        ('cash', 'Готівкою (тільки для самовивозу)'),
+        ('card', 'Оплата на картку'),
+        ('cash', 'Готівкою (самовивіз)'),
     )
     PAYMENT_STATUS_CHOICES = (
         ('not_paid', 'Не оплачено'),
@@ -69,7 +97,6 @@ class Order(models.Model):
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, null=True, blank=True)
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='not_paid')
 
-    # optional audit fields
     payment_confirmed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='confirmed_payments'
     )
@@ -87,10 +114,6 @@ class Order(models.Model):
         return f"Order#{self.id} {self.full_name} {prod_name}"
 
     def recalc_totals(self):
-        """
-        Перерахувати quantity_g і total_price за позиціями OrderItem.
-        Викликайте після створення/оновлення позицій.
-        """
         items = self.items.all()
         total_qty = 0
         total_sum = Decimal('0.00')
@@ -105,7 +128,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(SeafoodProduct, null=True, blank=True, on_delete=models.SET_NULL, related_name='order_items')
-    quantity_g = models.PositiveIntegerField(default=100)   # кількість в грамах
+    quantity_g = models.PositiveIntegerField(default=100)   # grams
     unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))  # price per 100g
     total_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
 
@@ -113,13 +136,12 @@ class OrderItem(models.Model):
 
     class Meta:
         verbose_name = 'Позиція замовлення'
-        verbose_name_plural = 'По��иції замовлення'
+        verbose_name_plural = 'Позиції замовлення'
 
     def __str__(self):
         return f"OrderItem #{self.id} for Order #{self.order_id}"
 
     def save(self, *args, **kwargs):
-        # ensure total_price is consistent: assume unit_price is price per 100g and quantity_g is grams
         try:
             self.total_price = (Decimal(self.unit_price) * Decimal(self.quantity_g)) / Decimal('100')
         except Exception:
@@ -198,13 +220,12 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     read = models.BooleanField(default=False)
 
-    # allow attaching a receipt/photo
     image = models.ImageField(upload_to='receipts/%Y/%m/', blank=True, null=True)
 
     class Meta:
         ordering = ['created_at']
         verbose_name = 'Повідомлення'
-        verbose_name_plural = 'По��ідомлення'
+        verbose_name_plural = 'Повідомлення'
 
     def __str__(self):
         return f"Message #{self.id} by {self.sender}"

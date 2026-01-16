@@ -5,275 +5,162 @@
 
 {% block head_extra %}
 <style>
-/* Scoped catalog styles (inline) — мінімальні правки для видимості цін */
+/* Catalog layout + fixed media sizing */
+.catalog-container { color:var(--muted); }
+.category-bar { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin:12px 0 18px; }
+.category-pill { padding:8px 12px; border-radius:8px; font-weight:800; text-decoration:none; cursor:pointer; border:1px solid rgba(255,255,255,0.06); color:var(--white); background:transparent; }
+.category-pill.active { background:var(--accent); color:#fff; border-color:transparent; }
+
+.sort-bar { text-align:center; margin:8px 0 18px; color:var(--muted); font-weight:700; }
+.sort-link { color:var(--muted); text-decoration:none; margin:0 8px; padding:6px 10px; border-radius:8px; border:1px solid transparent; }
+.sort-link.active { color:var(--white); background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.04); }
+
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 22px;
-  align-items: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
   margin: 0;
   padding: 0;
 }
 
-.products-grid .product-card {
+/* Card */
+.product-card {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.03));
-  padding: 18px;
+  display:flex;
+  flex-direction:column;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  padding: 0;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.04);
   box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-  min-height: 460px;
-  overflow: hidden;
-  transition: transform .15s ease, box-shadow .15s ease;
-}
-
-/* Image */
-.products-grid .product-card img {
-  width: 100%;
-  height: 220px;
-  object-fit: cover;
-  border-radius: 10px;
-  display: block;
-}
-
-/* Body: даємо запас для кнопок, але гарантуємо видимість ціни */
-.products-grid .product-card .card-body {
-  padding-top: 12px;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-  padding-bottom: 72px; /* резерв для кнопок */
-}
-
-/* Заголовок / опис / ціна */
-.products-grid .product-card h3 {
-  margin: 0 0 8px;
-  color: var(--white);
-  font-size: 18px;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-break: break-word;
-}
-.products-grid .product-card .product-meta {
-  margin: 0 0 8px;
-  color: var(--muted);
-  font-size: 14px;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
   overflow: hidden;
 }
-.products-grid .product-card .price {
-  margin: 6px 0 0;
-  color: var(--white);
-  font-size: 15px;
-  font-weight: 700;
-  overflow-wrap: break-word;
+
+/* Media area: fixed height with cover */
+.product-media {
+  width:100%;
+  height:200px;
+  background:#0b0b0b;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.product-media img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
 }
 
-/* Дії: ТІЛЬКИ Купити і Контакти (без Детальніше) */
-.products-grid .product-card .product-actions {
-  position: absolute !important;
-  left: 18px;
-  right: 18px;
-  bottom: 18px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-  z-index: 6;
+/* Body */
+.card-body {
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
 }
-.products-grid .product-card .product-actions .btn {
-  flex: 1 1 auto;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-weight: 800;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.products-grid .product-card .product-actions .btn.btn-primary { background: var(--accent); color: #fff; }
-.products-grid .product-card .product-actions .btn.btn-outline { border: 2px solid rgba(255,255,255,0.06); background: transparent; color:var(--white); }
+.product-title { margin:0; font-size:1.1rem; font-weight:800; color:var(--white); }
+.product-meta { color:var(--muted); font-size:0.95rem; min-height:36px; }
+.product-price { font-weight:900; color:var(--white); margin-top:6px; }
 
-/* Mobile */
-@media (max-width: 600px) {
-  .products-grid { gap: 16px; }
-  .products-grid .product-card { min-height: auto; padding: 14px; }
-  .products-grid .product-card img { height: 160px; }
-  .products-grid .product-card .card-body { padding-bottom: 110px; }
-  .products-grid .product-card .product-actions { left: 12px; right: 12px; bottom: 12px; }
+/* Actions */
+.product-actions {
+  display:flex;
+  gap:10px;
+  padding:16px;
+  border-top:1px solid rgba(255,255,255,0.02);
+  background: transparent;
+}
+.btn { padding:8px 14px; border-radius:8px; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+.btn-primary { background:var(--accent); color:#fff; border:0; }
+.btn-outline { background:transparent; color:var(--white); border:1px solid rgba(255,255,255,0.06); }
+
+@media (max-width:900px) {
+  .product-media { height:160px; }
+  .products-grid { gap:16px; }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<main class="catalog-container" style="max-width:1200px;margin:36px auto;padding:0 24px;color:var(--muted)">
-  <h1 style="color:var(--white);text-align:center;margin-bottom:18px">Каталог товарів</h1>
+<main class="catalog-container" style="max-width:1200px;margin:36px auto;padding:0 24px;">
+  <h1 style="color:var(--white);text-align:center;margin-bottom:12px">Каталог товарів</h1>
+
+  <!-- Category bar -->
+  <nav class="category-bar" aria-label="Категорії">
+    <a href="{% url 'products' %}" class="category-pill {% if not selected_category %}active{% endif %}">Усі</a>
+    {% for c in categories %}
+      {% if c.slug %}
+        <a href="{% url 'products' %}?category={{ c.slug }}" class="category-pill {% if selected_category == c.slug %}active{% endif %}">{{ c.name }}</a>
+      {% else %}
+        <a href="{% url 'products' %}?category={{ c }}" class="category-pill {% if selected_category == c %}active{% endif %}">{{ c }}</a>
+      {% endif %}
+    {% endfor %}
+  </nav>
+
+  <!-- Sort bar (server-side) -->
+  <div class="sort-bar" role="region" aria-label="Сортування">
+    <a class="sort-link {% if current_sort == 'price_asc' %}active{% endif %}"
+       href="{% url 'products' %}{% if selected_category %}?category={{ selected_category }}&sort=price_asc{% else %}?sort=price_asc{% endif %}">Ціна ↑</a>
+    <a class="sort-link {% if current_sort == 'price_desc' %}active{% endif %}"
+       href="{% url 'products' %}{% if selected_category %}?category={{ selected_category }}&sort=price_desc{% else %}?sort=price_desc{% endif %}">Ціна ↓</a>
+    <a class="sort-link {% if current_sort == 'name_asc' %}active{% endif %}"
+       href="{% url 'products' %}{% if selected_category %}?category={{ selected_category }}&sort=name_asc{% else %}?sort=name_asc{% endif %}">Назва A→Я</a>
+    <a class="sort-link {% if current_sort == 'name_desc' %}active{% endif %}"
+       href="{% url 'products' %}{% if selected_category %}?category={{ selected_category }}&sort=name_desc{% else %}?sort=name_desc{% endif %}">Назва Я→A</a>
+    <a class="sort-link {% if current_sort == 'newest' %}active{% endif %}"
+       href="{% url 'products' %}{% if selected_category %}?category={{ selected_category }}&sort=newest{% else %}?sort=newest{% endif %}">Нові</a>
+  </div>
+
+  <!-- Optional: show selected category name (friendly) -->
+  {% if selected_category %}
+    <div style="text-align:center;margin:6px 0 18px;color:var(--muted);font-weight:700">
+      {% if categories and categories.0 %}
+        {% for cc in categories %}
+          {% if cc.slug == selected_category %}
+            <div style="color:var(--white);font-size:1.05rem;margin-bottom:6px;">{{ cc.name }}</div>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <div style="color:var(--white);font-size:1.05rem;margin-bottom:6px;">{{ selected_category }}</div>
+      {% endif %}
+    </div>
+  {% endif %}
 
   <div class="products-grid">
-    <article class="product-card" aria-labelledby="p-eel">
-      <img id="mainImage" src="{% static 'images/png/vugor.png' %}" alt="Вугор" class="product-img"
-     onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
-      <div class="card-body">
-        <h3 id="p-eel">Вугор</h3>
-        <p class="product-meta">Свіжий вугор, відбірна партія.</p>
-        <p class="price"><strong>Ціна: 250 грн за 100г</strong></p>
+  {% for p in products %}
+    <article class="product-card"
+             data-price="{{ p.price_per_100g|default:'' }}"
+             data-name="{{ p.name|default:'' }}"
+             data-category="{% if p.category %}{{ p.category.slug }}{% endif %}"
+             data-created="{{ p.created_at|date:'c' }}"
+             aria-labelledby="p-{{ p.id }}">
+      <div class="product-media" role="img" aria-label="{{ p.name }}">
+        {% if p.image %}
+          <img src="{{ p.image.url }}" alt="{{ p.name }}" loading="lazy"
+               onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+        {% else %}
+          <img src="{% static 'images/png/placeholder.png' %}" alt="{{ p.name }}" loading="lazy">
+        {% endif %}
       </div>
+
+      <div class="card-body">
+        <h3 id="p-{{ p.id }}" class="product-title">{{ p.name }}</h3>
+        <div class="product-meta">{{ p.description|default:'' }}</div>
+        <div class="product-price">{% if p.price_per_100g %}Ціна: {{ p.price_per_100g }} грн /100г{% else %}Ціна уточнюється{% endif %}</div>
+      </div>
+
       <div class="product-actions">
-        <a href="/product/1/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
+        <a href="{% url 'product_details' p.id %}" class="btn btn-primary">Купити</a>
+        <a href="{% url 'product_details' p.id %}" class="btn btn-outline">Деталі</a>
       </div>
     </article>
-
-    <article class="product-card" aria-labelledby="p-karas">
-      <img src="{% static 'images/карась печений 2.jpg' %}" alt="Карась печений">
-      <div class="card-body">
-        <h3 id="p-karas">Карась печений</h3>
-        <p class="product-meta">Чиста, соковита, ароматна страва.</p>
-        <p class="price"><strong>Ціна: 1100 грн за 1кг</strong></p>
-      </div>
-      <div class="product-actions">
-        <a href="/product/2/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
-      </div>
-    </article>
-
-    <article class="product-card" aria-labelledby="p-steak">
-      <img src="{% static 'images/ціла стейк філе 1.jpg' %}" alt="Ціла стейк філе">
-      <div class="card-body">
-        <h3 id="p-steak">Ціла стейк філе</h3>
-        <p class="product-meta">Відбірне філе — ідеально для гриля.</p>
-        <p class="price"><strong>Ціна: від 180 грн за 100г</strong></p>
-      </div>
-      <div class="product-actions">
-        <a href="/product/3/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
-      </div>
-    </article>
-
-    <article class="product-card" aria-labelledby="p-ikra-keta">
-      <img src="{% static 'images/ікра кети 1.jpg' %}" alt="Ікра Кети">
-      <div class="card-body">
-        <h3 id="p-ikra-keta">Ікра Кети</h3>
-        <p class="product-meta">Натуральна ікра, відмінна на свято.</p>
-        <p class="price"><strong>Ціна: від 5800 грн за 1кг</strong></p>
-      </div>
-      <div class="product-actions">
-        <a href="/product/4/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
-      </div>
-    </article>
-
-    <article class="product-card" aria-labelledby="p-ikra-premium">
-      <img src="{% static 'images/ікра кети преміум 1.jpg' %}" alt="Ікра Кети Преміум">
-      <div class="card-body">
-        <h3 id="p-ikra-premium">Ікра Кети Преміум</h3>
-        <p class="product-meta">Елітна ікра преміум-класу.</p>
-        <p class="price"><strong>Ціна: від 2800 грн за 500г</strong></p>
-      </div>
-      <div class="product-actions">
-        <a href="/product/5/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
-      </div>
-    </article>
-
-    <article class="product-card" aria-labelledby="p-ikra-forel">
-      <img src="{% static 'images/ікра форелі пастеризована.jpg' %}" alt="Ікра форелі пастеризована">
-      <div class="card-body">
-        <h3 id="p-ikra-forel">Ікра форелі пастеризована</h3>
-        <p class="product-meta">Пастеризована ікра форелі — м'який смак.</p>
-        <p class="price"><strong>Ціна: від 1500 грн за 400г</strong></p>
-      </div>
-      <div class="product-actions">
-        <a href="/product/6/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
-      </div>
-    </article>
-
-    <article class="product-card" aria-labelledby="p-ikra-black">
-      <img src="{% static 'images/ікра чорна 1.jpg' %}" alt="Ікра чорна">
-      <div class="card-body">
-        <h3 id="p-ikra-black">Ікра чорна</h3>
-        <p class="product-meta">Ексклюзивна чорна ікра Caviar.</p>
-        <p class="price"><strong>Ціна: від 13240 грн за 500г</strong></p>
-      </div>
-      <div class="product-actions">
-        <a href="/product/7/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
-      </div>
-    </article>
-
-    <article class="product-card" aria-labelledby="p-ikra-shchuka">
-      <img src="{% static 'images/ікра щукі слабосолена 1.jpg' %}" alt="Ікра щуки слабосолена">
-      <div class="card-body">
-        <h3 id="p-ikra-shchuka">Ікра щуки слабосолена</h3>
-        <p class="product-meta">Слабосолена щуча ікра — ніжна.</p>
-        <p class="price"><strong>Ціна: від 1100 грн за 500г</strong></p>
-      </div>
-      <div class="product-actions">
-        <a href="/product/8/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
-      </div>
-    </article>
-
-    <article class="product-card" aria-labelledby="p-medal">
-      <img src="{% static 'images/медальйони із шматочків тунця.jpg' %}" alt="Медальйони із шматочків тунця">
-      <div class="card-body">
-        <h3 id="p-medal">Медальйони із шматочків тунця</h3>
-        <p class="product-meta">Готові медальйони — швидко і смачно.</p>
-        <p class="price"><strong>Ціна: від 150 грн за 300г</strong></p>
-      </div>
-      <div class="product-actions">
-        <a href="/product/9/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
-      </div>
-    </article>
-
-    <article class="product-card" aria-labelledby="p-crab">
-      <img src="{% static 'images/мясо краба 1.jpg' %}" alt="М'ясо краба">
-      <div class="card-body">
-        <h3 id="p-crab">М'ясо краба</h3>
-        <p class="product-meta">Ніжне м'ясо краба, готове до подачі.</p>
-        <p class="price"><strong>Ціна: від 1800 грн за 0.250г</strong></p>
-      </div>
-      <div class="product-actions">
-        <a href="/product/10/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
-      </div>
-    </article>
-
-    <article class="product-card" aria-labelledby="p-liver">
-      <img src="{% static 'images/печінка тріски 1.jpg' %}" alt="Печінка тріски">
-      <div class="card-body">
-        <h3 id="p-liver">Печінка тріски</h3>
-        <p class="product-meta">Консервована печінка тріски — класика.</p>
-        <p class="price"><strong>Ціна: від 700 грн за 500г</strong></p>
-      </div>
-      <div class="product-actions">
-        <a href="/product/11/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
-      </div>
-    </article>
-
-    <article class="product-card" aria-labelledby="p-red-ikra">
-      <img src="{% static 'images/червона ікра кета.jpg' %}" alt="Червона ікра кета">
-      <div class="card-body">
-        <h3 id="p-red-ikra">Червона ікра кета</h3>
-        <p class="product-meta">Червона ікра — соковита та свіжа.</p>
-        <p class="price"><strong>Ціна: від 150 грн за 300г</strong></p>
-      </div>
-      <div class="product-actions">
-        <a href="/product/12/?buy=1" class="btn btn-primary">Купити</a>
-        <a href="/contact/" class="btn btn-outline">Контакти</a>
-      </div>
-    </article>
-
-  </div>
+  {% empty %}
+    <div style="grid-column:1/-1;color:var(--muted);text-align:center;padding:40px 12px;">
+      Немає товарів для показу.
+    </div>
+  {% endfor %}
+</div>
 </main>
 {% endblock %}
