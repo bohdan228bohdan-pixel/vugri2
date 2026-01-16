@@ -4,67 +4,130 @@
 {% block title %}Ваше замовлення отримано — #{{ order.id }}{% endblock %}
 
 {% block content %}
-<main style="max-width:1000px;margin:24px auto;padding:0 18px;color:var(--muted)">
+<main style="max-width:1000px;margin:24px auto;padding:18px;color:var(--muted)">
+
   <h1 style="color:var(--white);margin-bottom:18px">Ваше замовлення отримано</h1>
 
-  <div style="background:#fff;border-radius:6px;padding:18px;color:#111;">
-    <h3>Замовлення №{{ order.id }}</h3>
+  <div style="background:#fff;border-radius:10px;padding:18px;color:#111;box-shadow:0 8px 30px rgba(0,0,0,0.06)">
+    <h3 style="margin:0 0 8px">Замовлення №{{ order.id }}</h3>
+
     <div style="margin-top:8px;color:#333;line-height:1.5;">
-      <!-- Текст інструкцій (можна динамічно підставити залежно від способу оплати) -->
       {% if order.status == 'created' %}
         <p>Дякуємо! Ми отримали замовлення. Деталі нижче. Оплатіть за інструкцією або зачекайте повідомлення від продавця.</p>
+      {% elif order.status == 'closed' %}
+        <p style="color:#3a7d3a;font-weight:700">Замовлення закрите. Дякуємо за покупку.</p>
+      {% else %}
+        <p>Стан замовлення: <strong>{{ order.status|capfirst }}</strong></p>
       {% endif %}
     </div>
 
     <dl style="display:grid;grid-template-columns:220px 1fr;gap:8px 18px;margin-top:12px;color:var(--muted);">
-  <dt>Ім'я та прізвище</dt><dd>{{ order.full_name }}</dd>
+      <dt>Ім'я та прізвище</dt><dd>{{ order.full_name }}</dd>
 
-  <dt>Е‑пошта</dt>
-  <dd>
-    {% if order.user %}
-      {{ order.user.email }}
-    {% else %}
-      {{ "" }}
-    {% endif %}
-  </dd>
+      <dt>Е‑пошта</dt>
+      <dd>
+        {% if order.user %}
+          {{ order.user.email }}
+        {% else %}
+          {{ "" }}
+        {% endif %}
+      </dd>
 
-  <dt>Телефон</dt><dd>{{ order.phone }}</dd>
-  <dt>Місто</dt><dd>{{ order.city }}</dd>
-  <dt>Спосіб доставки</dt><dd>{{ order.postal }}</dd>
-  <dt>Адреса</dt><dd>{{ order.branch }}</dd>
-  <dt>Спосіб оплати</dt><dd>{% if order.status %}{{ order.status }}{% endif %}</dd>
-</dl>
+      <dt>Телефон</dt><dd>{{ order.phone }}</dd>
+      <dt>Місто</dt><dd>{{ order.city }}</dd>
+      <dt>Спосіб доставки</dt><dd>{{ order.postal }}</dd>
+      <dt>Адреса</dt><dd>{{ order.branch }}</dd>
+      <dt>Оплата</dt><dd>{% if order.payment_method %}{{ order.get_payment_method_display }}{% else %}{{ order.payment_status|capfirst }}{% endif %}</dd>
+    </dl>
 
     <hr style="margin:16px 0">
 
-    <h4>Ваше замовлення</h4>
-    <!-- Тут коротко вивести продукт(и) замовлення -->
-    <div style="border:1px solid rgba(0,0,0,0.06);padding:12px;border-radius:6px;">
-      <div style="display:flex;gap:12px;align-items:center">
-        {% if order.product and order.product.image %}
-          <img src="{{ order.product.image.url }}" alt="{{ order.product.name }}" style="width:80px;height:80px;object-fit:cover;border-radius:6px">
-        {% endif %}
-        <div>
-          <div style="font-weight:800">{{ order.product.name }}</div>
-          <div style="color:var(--muted)">{{ order.quantity_g }} г — {{ order.total_price }} грн</div>
-        </div>
+    <h4 style="margin:0 0 8px">Позиції замовлення</h4>
+
+    <div style="border:1px solid rgba(0,0,0,0.06);padding:12px;border-radius:8px;background:#f9f9f9">
+      <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;">
+        {% for item in order.items.all %}
+          <li style="display:flex;gap:12px;align-items:center;padding:8px;border-radius:6px;background:#fff;border:1px solid rgba(0,0,0,0.03);box-shadow:0 4px 12px rgba(0,0,0,0.03);">
+            {% if item.product and item.product.image %}
+              <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;flex:0 0 84px;">
+            {% else %}
+              <div style="width:84px;height:84px;border-radius:6px;background:#0b0b0b;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;flex:0 0 84px;">
+                Без зображення
+              </div>
+            {% endif %}
+
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                {% if item.product %}
+                  {{ item.product.name }}
+                {% else %}
+                  (товар)
+                {% endif %}
+              </div>
+              <div style="color:var(--muted);margin-top:6px;font-size:0.95rem;">
+                Кількість: {{ item.quantity_g }} г
+                &nbsp; — &nbsp;
+                Ціна: {{ item.unit_price }} грн /100г
+              </div>
+            </div>
+
+            <div style="text-align:right;min-width:120px;">
+              <div style="font-weight:900;color:#111">{{ item.total_price }} грн</div>
+            </div>
+          </li>
+        {% empty %}
+          {# Fallback for older single-product orders (keeps backward compatibility) #}
+          <li style="display:flex;gap:12px;align-items:center;padding:8px;border-radius:6px;background:#fff;border:1px solid rgba(0,0,0,0.03);">
+            {% if order.product and order.product.image %}
+              <img src="{{ order.product.image.url }}" alt="{{ order.product.name }}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;flex:0 0 84px;">
+            {% endif %}
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:800;color:#111">{{ order.product.name }}</div>
+              <div style="color:var(--muted);margin-top:6px;">{{ order.quantity_g }} г — {{ order.total_price }} грн</div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:12px;flex-wrap:wrap;">
+        <div style="color:var(--muted)">Оплачуйте за інструкцією в чаті або натисніть «Оплачено» після переказу.</div>
+        <div style="font-weight:900;font-size:1.05rem;">Разом: {{ order.total_price }} грн</div>
       </div>
     </div>
 
-    <div style="margin-top:14px;display:flex;gap:12px;align-items:center">
-      <a href="{% url 'chat' conversation.id %}" class="btn btn-primary">Написати продавцю VugriUa</a>
+    <div style="margin-top:18px;display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <a href="{% url 'chat' conversation.id %}" class="btn btn-primary">Написати продавцю VugriUa</a>
 
-      <!-- Inline quick message form -->
-      {% if request.user.is_authenticated %}
-      <form action="{% url 'chat' conversation.id %}" method="post" style="margin-left:12px;display:flex;gap:8px;align-items:center;">
-        {% csrf_token %}
-        <input name="text" placeholder="Написати повідомлення продавцю..." style="padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);min-width:320px">
-        <button class="btn btn-outline" type="submit">Відправити</button>
-      </form>
-      {% else %}
-        <a href="{% url 'login' %}?next={% url 'chat' conversation.id %}" class="btn btn-outline">Увійти щоб написати</a>
+        {% if request.user.is_authenticated %}
+          <form action="{% url 'chat' conversation.id %}" method="post" style="display:flex;gap:8px;align-items:center;">
+            {% csrf_token %}
+            <input name="text" placeholder="Написати повідомлення продавцю..." style="padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);min-width:220px;flex:1" {% if order.status == 'closed' %}disabled{% endif %}>
+            <button class="btn btn-outline" type="submit" {% if order.status == 'closed' %}disabled title="Ордер закрито — надсилання недоступне"{% endif %}>Відправити</button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}?next={% url 'chat' conversation.id %}" class="btn btn-outline">Увійти щоб написати</a>
+        {% endif %}
+      </div>
+
+      {% if order.status == 'closed' %}
+        <div style="background:#f0f7f2;border:1px solid #e0efe0;padding:10px;border-radius:8px;color:#2f6b3a;font-weight:700;">
+          Це замовлення закрите — надсилання повідомлень відключено.
+        </div>
       {% endif %}
     </div>
   </div>
 </main>
+
+<style>
+/* Small responsive tweaks for order_complete */
+@media (max-width: 760px) {
+  main { padding: 12px; }
+  dl { grid-template-columns: 1fr; }
+  .conversation-card img, .conversation-card .thumb { width:64px;height:64px; }
+  /* ensure item layout stacks on very small screens */
+  ul > li { flex-direction: column; align-items:flex-start; gap:8px; }
+  ul > li img { width:100%; height:auto; max-height:220px; object-fit:cover; }
+}
+</style>
 {% endblock %}

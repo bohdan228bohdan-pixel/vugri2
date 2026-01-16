@@ -3,29 +3,178 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block head_extra %}
+<style>
+/* Responsive improvements for conversations list (mobile-first) */
+
+.conversations-wrap {
+  width: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+/* List layout */
+.conversations-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Each conversation card */
+.conversation-card {
+  background: #0f1111;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.03);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Top row: title + actions */
+.conv-top {
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  justify-content:space-between;
+  flex-wrap:wrap;
+}
+
+/* Info column */
+.conv-info { flex:1 1 0; min-width:0; }
+
+/* Title / meta */
+.conv-title { font-weight:800; color:var(--white); margin-bottom:6px; font-size:1rem; }
+.conv-meta { color:var(--muted); font-size:0.92rem; }
+
+/* Participants */
+.conv-participants { color:var(--muted); font-size:0.86rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* Action column: buttons */
+.conv-actions {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:flex-end;
+  flex-shrink:0;
+  margin-left: 8px;
+}
+
+/* Buttons: make touch-friendly */
+.btn {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 10px;
+  border-radius:8px;
+  font-weight:700;
+  text-decoration:none;
+  cursor:pointer;
+  border:1px solid rgba(255,255,255,0.06);
+  background:transparent;
+  color:var(--white);
+  white-space:nowrap;
+}
+
+/* Primary appearance */
+.btn-primary {
+  background: linear-gradient(90deg,#ff6b6b,#ff4b4b);
+  border:none;
+  color:#fff;
+}
+
+/* Outline appearance */
+.btn-outline {
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.06);
+  color:var(--white);
+}
+
+/* Archived label */
+.conv-archived {
+  color:var(--muted);
+  font-weight:700;
+  padding:6px 10px;
+  border-radius:8px;
+  background:rgba(255,255,255,0.01);
+  text-align:center;
+}
+
+/* Make action buttons stack on small widths */
+@media (max-width: 520px) {
+  .conv-top { gap:10px; align-items:flex-start; }
+  .conv-actions { width:100%; display:flex; gap:8px; flex-wrap:wrap; justify-content:stretch; }
+  .conv-actions .btn { flex: 1 1 auto; min-width:0; padding:10px; font-size:0.95rem; }
+  .conv-title { font-size:1.05rem; }
+  .conv-meta { font-size:0.9rem; }
+  .conversation-card { padding:14px; }
+  .conv-participants { white-space:normal; overflow:visible; }
+}
+
+/* Desktop tweak: keep a comfortable max width */
+@media (min-width: 900px) {
+  .conversations-wrap { max-width:900px; margin: 0 auto; padding: 18px; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<main style="max-width:900px;margin:24px auto;padding:16px;">
-  <h1 style="margin-bottom:12px;">{{ title }}</h1>
+<main class="conversations-wrap" style="color:var(--muted);">
+  <h1 style="margin-bottom:12px;color:var(--white)">{{ title }}</h1>
 
   {% if conversations %}
-    <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:10px;">
+    <ul class="conversations-list">
       {% for conv in conversations %}
-        <li style="background:#0f1111;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-weight:700;color:#fff">Розмова #{{ conv.id }}</div>
+        <li class="conversation-card" role="article" aria-labelledby="conv-{{ conv.id }}">
+          <div class="conv-top">
+            <div class="conv-info">
+              <div id="conv-{{ conv.id }}" class="conv-title">Розмова #{{ conv.id }}</div>
+
               {% if conv.order %}
-                <div style="color:var(--muted)">Замовлення #{{ conv.order.id }} — {{ conv.order.product.name }}</div>
+                <div class="conv-meta">
+                  Замовлення #{{ conv.order.id }} —
+                  {% if conv.order.product %}
+                    {{ conv.order.product.name }}
+                  {% else %}
+                    (множинні позиції)
+                  {% endif %}
+                  {% if conv.order.status %}
+                    — <span style="font-weight:700; margin-left:6px; color:{% if conv.order.status == 'closed' %}lightgreen{% else %}var(--muted){% endif %};">{{ conv.order.status|capfirst }}</span>
+                  {% endif %}
+                </div>
               {% endif %}
-              <div style="color:var(--muted);font-size:13px;">
+
+              <div class="conv-participants" style="margin-top:6px;">
                 Учасники:
                 {% for u in conv.participants.all %}
                   {{ u.username }}{% if not forloop.last %}, {% endif %}
                 {% endfor %}
               </div>
             </div>
-            <div>
-              <a class="btn" href="{% url 'chat' conv.id %}">Відкрити чат</a>
+
+            <div class="conv-actions" aria-hidden="false">
+              <a class="btn btn-outline" href="{% url 'chat' conv.id %}">Відкрити чат</a>
+
+              {% if conv.order %}
+                <a class="btn" href="{% url 'order_complete' conv.order.id %}">Переглянути замовлення</a>
+              {% endif %}
+
+              {% if user.is_staff %}
+                {% if conv.order and conv.order.status != 'closed' %}
+                  <form action="{% url 'close_order' conv.id %}" method="post" style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary" aria-label="Закрити ордер {{ conv.order.id }}">Закрити ордер</button>
+                  </form>
+                {% else %}
+                  <div class="conv-archived" aria-hidden="true">Архів</div>
+                {% endif %}
+              {% endif %}
             </div>
           </div>
         </li>

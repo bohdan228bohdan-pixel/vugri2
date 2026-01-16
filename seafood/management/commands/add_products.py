@@ -142,3 +142,4 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.NOTICE(f"Image not found for {name}: {src_path}"))
 
         self.stdout.write(self.style.SUCCESS(f"Products created: {created}; updated: {updated}; images attached: {images_attached}"))
+        

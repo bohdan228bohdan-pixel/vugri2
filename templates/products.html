@@ -118,7 +118,8 @@
 
   <div class="products-grid">
     <article class="product-card" aria-labelledby="p-eel">
-      <img src="{% static 'images/png/vugor.png' %}" alt="Вугор">
+      <img id="mainImage" src="{% static 'images/png/vugor.png' %}" alt="Вугор" class="product-img"
+     onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
       <div class="card-body">
         <h3 id="p-eel">Вугор</h3>
         <p class="product-meta">Свіжий вугор, відбірна партія.</p>

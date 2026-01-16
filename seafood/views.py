@@ -1,4 +1,6 @@
 
+from itertools import product
+from itertools import product
 import random
 import requests
 from decimal import Decimal
@@ -12,7 +14,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.db.models import Avg
-from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST, require_http_methods
 from django.urls import reverse
@@ -26,6 +28,7 @@ import stripe
 from .models import (
     EmailVerification,
     Order,
+    OrderItem,
     SeafoodProduct,
     Favorite,
     Review,
@@ -116,7 +119,7 @@ SAMPLES = {
 def _product_from_db_or_sample(product_id):
     """
     Return (product_obj_for_templates, db_product_or_none).
-    product_obj_for_templates has attributes: id, name, description, price_per_100g, image.url
+    product_obj_for_templates has attributes: id, name, description, price_per_100g, image.url, in_stock
     """
     prod = SeafoodProduct.objects.filter(id=product_id).first()
     if prod:
@@ -131,6 +134,7 @@ def _product_from_db_or_sample(product_id):
             description=prod.description,
             price_per_100g=str(prod.price_per_100g),
             image=img,
+            in_stock=bool(prod.in_stock),  # <-- додано
         )
         return product_obj, prod
 
@@ -150,9 +154,9 @@ def _product_from_db_or_sample(product_id):
         description=data['description'],
         price_per_100g=data['price_per_100g'],
         image=SimpleNamespace(url=image_url),
+        in_stock=True,  # sample items available by default
     )
     return product_obj, None
-
 
 # -----------------------
 # Public site views
@@ -332,6 +336,7 @@ def product_details(request, product_id):
         'is_favorited': is_favorited,
         'reviews': reviews,
         'average_rating': average_rating,
+        'product.youtube_url': product.youtube_url if hasattr(product, 'youtube_url') else None
     })
 
 
@@ -843,31 +848,82 @@ import random
 
 def checkout_view(request):
     """
-    Показує форму оформлення. При POST валідовано — зберігає в сесії last_order і редіректить на success.
-    Використовує session['cart'] якщо є, або параметр product_id (GET) для одиночного товару.
+    Показує форму оформлення і підготовлює дані для оформлення.
+    Підтримує дві ситуації:
+      - session['cart'] існує і це dict {pid: {name, price, currency, quantity, image}}
+      - fallback: GET product_id (одиночний товар)
+    При POST валідовано — зберігає в сесії last_order і редіректить на success.
     """
-    cart = request.session.get('cart')  # очікується список dict {'id','name','price','quantity'}
-    product = None
-    total_price = 0.0
+    from decimal import Decimal
 
-    if cart:
-        for it in cart:
-            total_price += float(it.get('price', 0)) * int(it.get('quantity', 1))
+    cart = request.session.get('cart', {})  # dict pid -> item
+    product = None
+
+    total_price = Decimal('0.00')
+    totals = {}   # totals by currency as Decimal
+    items_list = []  # list of normalized items for template/last_order
+
+    # If cart is a mapping (standard case)
+    if cart and isinstance(cart, dict):
+        for pid, it in cart.items():
+            try:
+                price = Decimal(str(it.get('price', 0)))          # price per 100g (as stored)
+                qty = int(it.get('quantity', 1))                  # number of 100g units as stored
+            except Exception:
+                # skip malformed entry
+                continue
+            line_total = price * Decimal(qty)                    # price * qty (both in same unit)
+            cur = it.get('currency', 'UAH') or 'UAH'
+            totals.setdefault(cur, Decimal('0.00'))
+            totals[cur] += line_total
+            total_price += line_total
+
+            items_list.append({
+                'product_id': str(pid),
+                'name': it.get('name', ''),
+                'price': "{:.2f}".format(price),
+                'quantity': qty,
+                'currency': cur,
+                'image': it.get('image', ''),
+                'line_total': "{:.2f}".format(line_total),
+            })
     else:
+        # fallback single product via GET product_id
         pid = request.GET.get('product_id')
         if pid:
             try:
-                from .models import SeafoodProduct
                 prod = SeafoodProduct.objects.filter(id=pid).first()
                 if prod:
-                    product = {
-                        'id': prod.id,
+                    price = Decimal(str(getattr(prod, 'price_per_100g', 0)))
+                    # allow GET quantity param (in grams) but default to 100
+                    q_raw = request.GET.get('quantity', '100')
+                    try:
+                        q_val = int(q_raw)
+                    except Exception:
+                        q_val = 100
+                    # convert grams -> number of 100g units if caller passed grams that are multiples of 100
+                    if q_val >= 10 and q_val % 100 == 0:
+                        qty_unit = max(1, q_val // 100)
+                    else:
+                        qty_unit = max(1, q_val)
+                    line_total = price * Decimal(qty_unit)
+                    total_price = line_total
+                    totals = {'UAH': line_total}
+                    items_list.append({
+                        'product_id': str(prod.id),
                         'name': prod.name,
-                        'price': float(getattr(prod, 'price_per_100g', 0)),
-                    }
-                    total_price = product['price']
+                        'price': "{:.2f}".format(price),
+                        'quantity': qty_unit,
+                        'currency': 'UAH',
+                        'image': getattr(prod.image, 'url', ''),
+                        'line_total': "{:.2f}".format(line_total),
+                    })
+                    product = {'id': prod.id, 'name': prod.name, 'price': "{:.2f}".format(price), 'quantity': qty_unit}
             except Exception:
                 product = None
+
+    # format totals for template (strings)
+    totals_str = {cur: "{:.2f}".format(amount) for cur, amount in totals.items()}
 
     errors = []
     posted = {}
@@ -882,7 +938,7 @@ def checkout_view(request):
         posted['comment'] = request.POST.get('comment', '').strip()
         posted['agree'] = request.POST.get('agree')
 
-        # Проста валідація
+        # Simple validation
         if not posted['full_name']:
             errors.append("Вкажіть ім'я.")
         if not posted['phone']:
@@ -891,7 +947,9 @@ def checkout_view(request):
             errors.append("Підтвердіть згоду з умовами.")
 
         if not errors:
+            # Build last_order payload to show on success page
             order_id = f"VG{timezone.now().strftime('%Y%m%d')}{random.randint(1000,9999)}"
+            # totals_str may be empty dict -> put total as formatted string
             request.session['last_order'] = {
                 'order_id': order_id,
                 'created': timezone.now().isoformat(),
@@ -903,22 +961,25 @@ def checkout_view(request):
                 'payment_method': posted['payment_method'],
                 'comment': posted['comment'],
                 'total': "{:.2f}".format(total_price),
-                'items': cart or ([product] if product else []),
+                'totals': totals_str,
+                'items': items_list,
             }
-            # опціонально очистити кошик:
-            # request.session['cart'] = []
+            # Optionally clear the cart after successful checkout:
+            # request.session.pop('cart', None)
+            request.session.modified = True
             return redirect(reverse('checkout_success'))
-        # якщо є помилки — покажемо форму з помилками
 
     context = {
         'cart': cart,
         'product': product,
         'total_price': "{:.2f}".format(total_price),
+        'totals': totals_str,
+        'items': items_list,
         'errors': errors,
         'posted': posted,
+        'cart_count': cart_count(request),
     }
     return render(request, 'checkout.html', context)
-
 
 def checkout_success(request):
     """
@@ -961,7 +1022,20 @@ def chat_view(request, conv_id):
     if not (request.user.is_staff or conv.participants.filter(pk=request.user.pk).exists()):
         return render(request, '403.html', status=403)
 
+    # compute order_closed flag (order may be None)
+    order = getattr(conv, 'order', None)
+    order_closed = False
+    if order and getattr(order, 'status', None) == 'closed':
+        order_closed = True
+
     if request.method == 'POST':
+        # If order closed: reject any attempt to post (AJAX or normal POST)
+        if order_closed:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'ok': False, 'error': 'Order closed; cannot send messages'}, status=403)
+            messages = conv.messages.select_related('sender').all()
+            return render(request, 'chat.html', {'conversation': conv, 'messages': messages, 'order_closed': True}, status=403)
+
         # handle file upload (receipt)
         receipt = request.FILES.get('receipt')
         text = request.POST.get('text', '').strip()
@@ -973,6 +1047,7 @@ def chat_view(request, conv_id):
                 conv.order.payment_status = 'processing'
                 conv.order.save()
             # notify seller in chat (system message) if seller exists
+            from django.contrib.auth import get_user_model
             seller = get_user_model().objects.filter(username='VugriUa').first()
             if seller:
                 Message.objects.create(conversation=conv, sender=seller, text='Дякуємо, квитанцію отримано. Очікуйте підтвердження оплати.')
@@ -989,16 +1064,19 @@ def chat_view(request, conv_id):
             return redirect('chat', conv_id=conv.id)
 
     messages = conv.messages.select_related('sender').all()
-    return render(request, 'chat.html', {'conversation': conv, 'messages': messages})
-
+    return render(request, 'chat.html', {'conversation': conv, 'messages': messages, 'order_closed': order_closed})
 @require_POST
 def submit_order(request):
-    # очікуємо POST (decorator already ensures POST)
-    product_id = int(request.POST.get('product_id') or 0)
-    product_obj, db_prod = _product_from_db_or_sample(product_id)
-    if not product_obj:
-        return render(request, '404.html', status=404)
+    """
+    Створює замовлення. Підтримує багатопозиційний кошик у session['cart'].
+    Формат cart: dict { pid: {name, price, currency, quantity, image} }
+    price — ціна за 100г (як у add_to_cart), quantity — кількість одиниць (кількість "100г" блочків).
+    """
+    from django.contrib.auth import get_user_model
 
+    # Read cart from session
+    cart = request.session.get('cart', {}) or {}
+    # Parse common form fields (delivery/contact)
     delivery_type = request.POST.get('delivery_type', '').strip()
     postal = request.POST.get('postal', '').strip()
     region = request.POST.get('region', '').strip()
@@ -1012,45 +1090,99 @@ def submit_order(request):
     email = request.POST.get('email', '').strip()
     phone = request.POST.get('phone', '').strip()
 
-    # payment_method from form: 'card' or 'cash'
     payment_method = request.POST.get('payment_method', '').strip()
-
     full_name = f"{last_name} {first_name} {middle_name}".strip()
     if address:
         branch = address
 
-    try:
-        quantity = int(request.POST.get('quantity', 100))
-    except (TypeError, ValueError):
-        quantity = 100
-
-    price_per_100g = Decimal(str(product_obj.price_per_100g))
-    total_price = (Decimal(quantity) / Decimal(100)) * price_per_100g
-
-    # validate required fields
+    # Basic validation
     if not (delivery_type and postal and region and city and branch and first_name and last_name and middle_name and email and phone):
+        # If cart present, we will re-render checkout form; otherwise fallback to order_form product
+        # Try to show the relevant product again if provided
+        product_id = int(request.POST.get('product_id') or 0)
+        product_obj, _ = _product_from_db_or_sample(product_id) if product_id else (None, None)
         return render(request, 'order_form.html', {
             'product': product_obj,
             'error': "Заповніть всі поля (служба доставки, дані доставки, контактні дані)."
         })
 
-    # If payment method is cash but delivery type not allowed for cash (business rule),
-    # you may want to reject or force card. Simple check: allow cash only for nova_branch (example).
+    # If payment_method is cash but not allowed for delivery method -> adjust business rule
     if payment_method == 'cash' and delivery_type != 'nova_branch':
-        # force to card or show error; here we force to card
         payment_method = 'card'
 
-    # створюємо/отримуємо DB-продукт
-    if db_prod is None:
-        db_prod = SeafoodProduct.objects.create(
-            name=product_obj.name,
-            description=product_obj.description,
-            price_per_100g=price_per_100g,
-        )
+    # Build items list either from cart or from POST product_id (fallback to single product)
+    items_data = []  # each item: dict with keys product_obj (db), name, unit_price (Decimal), qty_units (int)
+    total_price = Decimal('0.00')
+    total_qty_grams = 0
 
-    # створюємо order (з payment fields)
+    # Case: multi-item cart from session
+    if isinstance(cart, dict) and cart:
+        for pid_str, it in cart.items():
+            try:
+                pid = int(pid_str)
+            except Exception:
+                continue
+            # Try to use DB product if exists
+            db_prod = SeafoodProduct.objects.filter(pk=pid).first()
+            # unit price stored in cart is numeric (price per 100g)
+            try:
+                unit_price = Decimal(str(it.get('price', '0')))
+            except Exception:
+                unit_price = Decimal('0')
+            try:
+                qty_units = int(it.get('quantity', 1))
+            except Exception:
+                qty_units = 1
+            line_total = unit_price * Decimal(qty_units)   # price per 100g * number of 100g units
+            total_price += line_total
+            total_qty_grams += qty_units * 100
+            items_data.append({
+                'product_obj': db_prod,
+                'name': it.get('name') or (db_prod.name if db_prod else 'Товар'),
+                'unit_price': unit_price,
+                'qty_units': qty_units,
+                'line_total': line_total,
+                'pid': pid,
+            })
+    else:
+        # Fallback: single product_id from POST (old behaviour)
+        product_id = int(request.POST.get('product_id') or 0)
+        product_obj, db_prod = _product_from_db_or_sample(product_id) if product_id else (None, None)
+        if not product_obj:
+            return render(request, '404.html', status=404)
+        try:
+            qty = int(request.POST.get('quantity', 100))
+        except Exception:
+            qty = 100
+        # We expect qty as grams in older form; convert to 100g units
+        if qty >= 10 and qty % 100 == 0:
+            qty_units = max(1, qty // 100)
+        else:
+            qty_units = max(1, qty)
+        unit_price = Decimal(str(product_obj.price_per_100g))
+        line_total = (Decimal(qty) / Decimal(100)) * unit_price if qty >= 10 else unit_price * Decimal(qty_units)
+        total_price = line_total
+        total_qty_grams = qty if isinstance(qty, int) else qty_units * 100
+        # Ensure db_prod exists
+        if db_prod is None:
+            db_prod = SeafoodProduct.objects.create(
+                name=product_obj.name,
+                description=product_obj.description,
+                price_per_100g=unit_price,
+            )
+        items_data.append({
+            'product_obj': db_prod,
+            'name': product_obj.name,
+            'unit_price': unit_price,
+            'qty_units': qty_units,
+            'line_total': line_total,
+            'pid': product_id,
+        })
+
+    # Create Order (product kept nullable — set first product for convenience)
+    first_product = items_data[0]['product_obj'] if items_data and items_data[0].get('product_obj') else None
     order = Order.objects.create(
-        product=db_prod,
+        product=first_product,
         user=request.user if request.user.is_authenticated else None,
         full_name=full_name,
         phone=phone,
@@ -1058,16 +1190,49 @@ def submit_order(request):
         city=city,
         postal=postal,
         branch=branch,
-        quantity_g=quantity,
+        quantity_g=total_qty_grams or (items_data[0]['qty_units'] * 100 if items_data else 100),
         total_price=total_price,
         status='created',
         payment_method=payment_method or 'card',
         payment_status='not_paid',
     )
 
-    # ensure seller user exists
-    User = get_user_model()
+    # Create OrderItem records
+    for it in items_data:
+        prod_obj = it.get('product_obj')
+        # if product not in DB, create a DB record
+        if prod_obj is None:
+            # create minimal DB product from name & price
+            try:
+                prod_obj = SeafoodProduct.objects.create(
+                    name=it.get('name') or 'Товар',
+                    description='',
+                    price_per_100g=it.get('unit_price') or Decimal('0.00'),
+                )
+            except Exception:
+                prod_obj = None
+        # quantity in grams
+        qty_g = int(it.get('qty_units', 1)) * 100
+        OrderItem.objects.create(
+            order=order,
+            product=prod_obj,
+            quantity_g=qty_g,
+            unit_price=it.get('unit_price', Decimal('0.00')),
+            # total_price will be set by OrderItem.save()
+        )
+
+    # Recalculate totals to ensure consistency
     try:
+        order.recalc_totals()
+    except Exception:
+        # fallback: ensure total_price set
+        order.total_price = total_price
+        order.quantity_g = total_qty_grams
+        order.save(update_fields=['total_price', 'quantity_g'])
+
+    # ensure seller user exists and create conversation
+    try:
+        User = get_user_model()
         seller = User.objects.filter(username='VugriUa').first()
         if not seller:
             seller = User.objects.create(username='VugriUa', email='vugriua@example.com', is_active=True)
@@ -1076,7 +1241,6 @@ def submit_order(request):
     except Exception:
         seller = None
 
-    # create/get conversation tied to order
     conv, _ = Conversation.objects.get_or_create(order=order)
     if order.user:
         conv.participants.add(order.user)
@@ -1084,12 +1248,16 @@ def submit_order(request):
         conv.participants.add(seller)
     conv.save()
 
-    # initial message for seller with order summary
+    # Build initial chat message listing all items
+    items_lines = []
+    for oi in order.items.all():
+        prod_name = oi.product.name if oi.product else '(товар)'
+        items_lines.append(f"- {prod_name}: {oi.quantity_g} г — {oi.total_price} грн")
+    items_text = "\n".join(items_lines)
+
     initial_msg_text = (
         f"Нове замовлення #{order.id}\n"
-        f"Товар: {order.product.name}\n"
-        f"Кількість (г): {order.quantity_g}\n"
-        f"Сума: {order.total_price}\n"
+        f"Позиції:\n{items_text}\n\n"
         f"Клієнт: {order.full_name}\n"
         f"Телефон: {order.phone}\n"
         f"Місто: {order.city}\n"
@@ -1097,38 +1265,41 @@ def submit_order(request):
         f"Email: {email}\n"
         f"Оплата: {order.get_payment_method_display() if order.payment_method else 'не вказано'}\n"
     )
-    if seller:
-        Message.objects.create(conversation=conv, sender=seller, text=initial_msg_text)
-    else:
-        # fallback: use any participant as sender
-        sender = conv.participants.first()
-        if sender:
-            Message.objects.create(conversation=conv, sender=sender, text=initial_msg_text)
 
-    # If payment by card -> add automatic instruction message in chat
-    if order.payment_method == 'card' and seller:
+    sender = seller if seller else conv.participants.first()
+    if sender:
+        Message.objects.create(conversation=conv, sender=sender, text=initial_msg_text)
+
+    # payment instruction if card
+    if order.payment_method == 'card' and sender:
         instruction_text = (
             f"Вітаю!\n\n"
             f"1) Зайдіть у свій банк або мобільний додаток.\n"
-            f"2) Перекажіть кошти на карту: 4141 41XX XXXX XXXX (приклад) — Отримувач: VugriUA\n"
+            f"2) Перекажіть кошти на ФОП Шовка Юрій Васильович: IBAN UA733220010000026009350109011\n"
             f"   Сума: {order.total_price}\n"
             f"3) Зробіть фото квитанції та натисніть «Оплачено» в чаті або прикріпіть файл у повідомленні.\n\n"
             f"Після отримання квитанції ми перевіримо оплату та підтвердимо."
         )
-        Message.objects.create(conversation=conv, sender=seller, text=instruction_text)
+        Message.objects.create(conversation=conv, sender=sender, text=instruction_text)
 
-    # сформувати лист (optional)
+    # Optionally clear cart after successful order creation
+    try:
+        request.session.pop('cart', None)
+        request.session.modified = True
+    except Exception:
+        pass
+
+    # Send notification email (existing behavior)
     subject = f"Нове замовлення #{order.id} — VugriUkraine"
     chat_url = request.build_absolute_uri(reverse('chat', args=[conv.id]))
     message_body = (
         f"Нове замовлення #{order.id}\n\n"
-        f"Товар: {order.product.name}\nКількість (г): {order.quantity_g}\nСума: {order.total_price}\n\n"
+        f"Позиції:\n{items_text}\n\n"
         f"Дані замовника:\nІм'я: {order.full_name}\nТелефон: {order.phone}\nEmail: {email}\nМісто: {order.city}\nАдреса: {order.branch}\n\n"
         f"Посилання на чат: {chat_url}\n"
     )
-    html_message = f"<p>Нове замовлення #{order.id}</p><p>Товар: {order.product.name}<br>Кількість (г): {order.quantity_g}<br>Сума: {order.total_price}</p><p>Клієнт: {order.full_name}<br>Телефон: {order.phone}<br>Email: {email}</p><p>Чат: <a href='{chat_url}'>{chat_url}</a></p>"
+    html_message = f"<p>Нове замовлення #{order.id}</p><p>Позиції:<br/>{'<br/>'.join([line for line in items_lines])}</p><p>Клієнт: {order.full_name}<br>Телефон: {order.phone}<br>Email: {email}</p><p>Чат: <a href='{chat_url}'>{chat_url}</a></p>"
 
-    # отримувачі (notification email + seller email)
     recipients = []
     if getattr(settings, 'ORDER_NOTIFICATION_EMAIL', None):
         recipients.append(settings.ORDER_NOTIFICATION_EMAIL)
@@ -1136,19 +1307,13 @@ def submit_order(request):
         recipients.append(seller.email)
     recipients = list(dict.fromkeys([r for r in recipients if r]))
 
-    # SEND synchronously (console backend will print it in dev)
     if recipients:
         try:
             send_mail(subject, message_body, settings.DEFAULT_FROM_EMAIL, recipients, html_message=html_message, fail_silently=False)
-        except Exception as e:
-            import logging
-            logging.exception("Failed to send order email: %s", e)
+        except Exception:
+            pass
 
-    # redirect to confirmation page (with chat link)
     return redirect('order_complete', order_id=order.id)
-
-# Додати в кінець файлу seafood/views.py (після існуючих view-ів)
-
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 
@@ -1206,16 +1371,123 @@ def confirm_payment(request, conv_id):
 @staff_member_required
 def toggle_availability(request, product_id):
     """
-    Переключає product.in_stock (тільки для staff). Підтримує AJAX (JSON) і звичайний POST (redirect).
+    Staff-only (decorator). Additionally allow only username 'VugriUa' if you want exact user check.
+    Accepts POST with optional 'set' parameter:
+      set=1 -> mark in_stock True
+      set=0 -> mark in_stock False
+    If 'set' not provided -> toggle.
+    Returns JSON for AJAX or redirect back to product page.
     """
-    product = get_object_or_404(SeafoodProduct, id=product_id)
-    # toggle
-    product.in_stock = not product.in_stock
-    product.save()
+    # Optional extra check: only allow specific username
+    if not request.user.username == 'VugriUa':
+        return HttpResponseForbidden("Only VugriUa can toggle availability")
 
-    # Якщо AJAX — повернути результат
+    product = get_object_or_404(SeafoodProduct, pk=product_id)
+
+    if request.method == 'POST':
+        set_val = request.POST.get('set', None)
+        if set_val is None:
+            # toggle
+            product.in_stock = not product.in_stock
+        else:
+            product.in_stock = bool(int(set_val))
+        product.save()
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': True, 'in_stock': product.in_stock, 'product_id': product.id})
+        return redirect(reverse('product_details', args=[product.id]))
+
+    # Reject GET
+    return HttpResponseForbidden()
+
+@require_POST
+def add_to_cart(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'ok': False,
+            'error': 'login required',
+            'login_url': reverse('login') + '?next=' + request.path
+        }, status=401)
+
+    product_id = request.POST.get('product_id')
+    if not product_id:
+        return JsonResponse({'ok': False, 'error': 'product_id required'}, status=400)
+
+    product = get_object_or_404(SeafoodProduct, pk=int(product_id))
+
+    # <-- SERVER-SIDE AVAILABILITY CHECK -->
+    if not product.in_stock:
+        return JsonResponse({'ok': False, 'error': 'Товар тимчасово відсутній', 'in_stock': False}, status=400)
+    # <-- end check -->
+
+    # ... ваша існуюча логіка для name/price/quantity/image/додавання в сесію ...
+    name = request.POST.get('name', product.name or 'Товар')
+    try:
+        client_price = request.POST.get('price')
+        price = int(float(client_price)) if client_price else int(float(product.price_per_100g or 0))
+    except Exception:
+        price = int(float(product.price_per_100g or 0))
+
+    currency = request.POST.get('currency', 'UAH')
+    try:
+        q = int(float(request.POST.get('quantity', '1')))
+    except Exception:
+        q = 1
+    quantity = max(1, q if not (q >= 10 and q % 100 == 0) else q // 100)
+    image = request.POST.get('image', '')
+
+    cart = _get_cart(request)  # ваш хелпер
+    pid = str(product.id)
+    if pid in cart:
+        cart[pid]['quantity'] = int(cart[pid].get('quantity', 0)) + quantity
+    else:
+        cart[pid] = {'name': name, 'price': price, 'currency': currency, 'quantity': quantity, 'image': image}
+
+    request.session.modified = True
+    return JsonResponse({'ok': True, 'cart_count': cart_count(request)})
+
+from django.views.decorators.http import require_POST
+from django.contrib.auth import get_user_model
+
+@staff_member_required
+@require_POST
+def close_order(request, conv_id):
+    """
+    Закриває ордер, пов'язаний з розмовою conv_id.
+    Працює тільки для staff (VugriUa). Повертає JSON для AJAX або редірект назад.
+    """
+    conv = get_object_or_404(Conversation, id=conv_id)
+    order = getattr(conv, 'order', None)
+    if not order:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'error': 'No order attached'}, status=400)
+        return redirect(request.META.get('HTTP_REFERER', reverse('my_conversations')))
+
+    # mark closed
+    order.status = 'closed'
+    order.save()
+
+    # system message from seller / current staff
+    seller = get_user_model().objects.filter(username='VugriUa').first() or request.user
+    sys_text = "Замовлення закрите. Розмова переміщена в архів."
+    Message.objects.create(conversation=conv, sender=seller, text=sys_text)
+
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return JsonResponse({'ok': True, 'in_stock': product.in_stock, 'product_id': product.id})
+        return JsonResponse({'ok': True, 'status': 'closed'})
+    return redirect(request.META.get('HTTP_REFERER', reverse('my_conversations')))
 
-    # Інакше — редірект назад на сторінку товару
-    return redirect(reverse('product_details', args=[product.id]))
+
+@login_required
+def archived_conversations(request):
+    """
+    Показує архівні розмови (order.status == 'closed').
+    - staff бачить всі archived conversations
+    - звичайний користувач бачить тільки свої archived conversations
+    Використовує той самий шаблон conversations_list.html (title: 'Архів чатів').
+    """
+    if request.user.is_staff:
+        qs = Conversation.objects.filter(order__status='closed').select_related('order').prefetch_related('participants').order_by('-created_at')
+    else:
+        qs = Conversation.objects.filter(participants=request.user, order__status='closed').select_related('order').prefetch_related('participants').order_by('-created_at')
+
+    return render(request, 'conversations_list.html', {'conversations': qs, 'title': 'Архів чатів'})

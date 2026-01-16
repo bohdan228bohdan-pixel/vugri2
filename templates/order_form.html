@@ -275,7 +275,7 @@ textarea.input{ min-height:80px; resize:vertical; }
           <label class="field-label required">Оплата</label>
           <div style="display:flex;gap:14px;align-items:center;margin-top:8px;">
             <label style="display:flex;align-items:center;gap:8px;">
-              <input type="radio" name="payment_method" value="card" {% if posted.payment_method == 'card' or not posted.payment_method %}checked{% endif %}> Оплата на картку Приват
+              <input type="radio" name="payment_method" value="card" {% if posted.payment_method == 'card' or not posted.payment_method %}checked{% endif %}> Оплата на картку ФОП
             </label>
             <label style="display:flex;align-items:center;gap:8px;">
               <input type="radio" name="payment_method" value="cash" id="cashRadio" {% if posted.payment_method == 'cash' %}checked{% endif %}> Готівкою (тільки для самовивозу)

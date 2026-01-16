@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from decimal import Decimal
 
 
 class SeafoodProduct(models.Model):
@@ -9,6 +10,7 @@ class SeafoodProduct(models.Model):
     price_per_100g = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
+    youtube_url = models.URLField(blank=True, null=True)
 
     # Availability flag (new)
     in_stock = models.BooleanField(
@@ -35,7 +37,8 @@ class EmailVerification(models.Model):
 
 
 class Order(models.Model):
-    product = models.ForeignKey(SeafoodProduct, on_delete=models.CASCADE)
+    # product kept for compatibility; now nullable because order may contain many items
+    product = models.ForeignKey(SeafoodProduct, on_delete=models.CASCADE, null=True, blank=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
 
     full_name = models.CharField(max_length=200)
@@ -46,8 +49,9 @@ class Order(models.Model):
     postal = models.CharField(max_length=50, blank=True)
     branch = models.CharField(max_length=150, blank=True)
 
+    # summary fields (kept for quick display, will reflect aggregated items)
     quantity_g = models.PositiveIntegerField(default=100)
-    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
 
     status = models.CharField(max_length=30, default='created')
 
@@ -79,7 +83,48 @@ class Order(models.Model):
         verbose_name_plural = 'Замовлення'
 
     def __str__(self):
-        return f"Order#{self.id} {self.full_name} {self.product.name}"
+        prod_name = self.product.name if self.product else '(множинні позиції)'
+        return f"Order#{self.id} {self.full_name} {prod_name}"
+
+    def recalc_totals(self):
+        """
+        Перерахувати quantity_g і total_price за позиціями OrderItem.
+        Викликайте після створення/оновлення позицій.
+        """
+        items = self.items.all()
+        total_qty = 0
+        total_sum = Decimal('0.00')
+        for it in items:
+            total_qty += int(it.quantity_g or 0)
+            total_sum += (it.total_price or Decimal('0.00'))
+        self.quantity_g = total_qty or self.quantity_g
+        self.total_price = total_sum
+        self.save(update_fields=['quantity_g', 'total_price'])
+
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(SeafoodProduct, null=True, blank=True, on_delete=models.SET_NULL, related_name='order_items')
+    quantity_g = models.PositiveIntegerField(default=100)   # кількість в грамах
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))  # price per 100g
+    total_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Позиція замовлення'
+        verbose_name_plural = 'По��иції замовлення'
+
+    def __str__(self):
+        return f"OrderItem #{self.id} for Order #{self.order_id}"
+
+    def save(self, *args, **kwargs):
+        # ensure total_price is consistent: assume unit_price is price per 100g and quantity_g is grams
+        try:
+            self.total_price = (Decimal(self.unit_price) * Decimal(self.quantity_g)) / Decimal('100')
+        except Exception:
+            self.total_price = Decimal('0.00')
+        super().save(*args, **kwargs)
 
 
 class Favorite(models.Model):
@@ -159,7 +204,7 @@ class Message(models.Model):
     class Meta:
         ordering = ['created_at']
         verbose_name = 'Повідомлення'
-        verbose_name_plural = 'Повідомлення'
+        verbose_name_plural = 'По��ідомлення'
 
     def __str__(self):
         return f"Message #{self.id} by {self.sender}"

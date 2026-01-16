@@ -17,7 +17,13 @@
     {% endif %}
   </h1>
 
-  <div style="background:#0f1111;padding:12px;border-radius:10px;min-height:300px;display:flex;flex-direction:column;gap:12px">
+  <div id="chatRoot" data-order-closed="{{ order_closed|yesno:'1,0' }}" style="background:#0f1111;padding:12px;border-radius:10px;min-height:300px;display:flex;flex-direction:column;gap:12px">
+    {% if order_closed %}
+      <div style="background:#1b1b1b;border:1px solid rgba(255,255,255,0.04);padding:12px;border-radius:8px;margin:12px 0;color:#ffd8d8;">
+        <strong>Цей ордер закрито.</strong> Надсилання повідомлень та завантаження квитанцій більше недоступне.
+      </div>
+    {% endif %}
+
     <div id="messages" style="overflow:auto;max-height:520px;padding:8px;display:flex;flex-direction:column;gap:10px;">
       {% for m in messages %}
         <div style="align-self: {% if m.sender == request.user %}flex-end{% else %}flex-start{% endif %}; max-width:78%; background: {% if m.sender == request.user %}var(--accent){% else %}rgba(255,255,255,0.04){% endif %}; padding:10px;border-radius:10px;color:#fff;">
@@ -35,15 +41,15 @@
 
     <form id="msgForm" method="post" action="{% url 'chat' conversation.id %}" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;">
       {% csrf_token %}
-      <input name="text" id="msgText" placeholder="Напишіть повідомлення..." autocomplete="off" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)">
-      <input type="file" id="receiptFile" name="receipt" accept="image/*" style="display:none;">
-      {% if conversation.order and conversation.order.payment_method == 'card' and conversation.order.payment_status != 'paid' %}
+      <input name="text" id="msgText" placeholder="Напишіть повідомлення..." autocomplete="off" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--white)" {% if order_closed %}disabled{% endif %}>
+      <input type="file" id="receiptFile" name="receipt" accept="image/*" style="display:none;" {% if order_closed %}disabled{% endif %}>
+      {% if conversation.order and conversation.order.payment_method == 'card' and conversation.order.payment_status != 'paid' and not order_closed %}
         <button type="button" id="paidBtn" class="btn btn-warning" title="Завантажити фото квитанції">Оплачено</button>
       {% endif %}
-      <button type="submit" class="btn btn-primary">Відправити</button>
+      <button type="submit" class="btn btn-primary" {% if order_closed %}disabled title="Ордер закрито — надсилання недоступне"{% endif %}>Відправити</button>
     </form>
 
-    {% if user.is_staff and conversation.order and conversation.order.payment_status != 'paid' %}
+    {% if user.is_staff and conversation.order and conversation.order.payment_status != 'paid' and not order_closed %}
       <div style="margin-top:8px;">
         <button type="button" id="confirmPaymentBtn" class="btn btn-success">
           Підтвердити оплату
@@ -57,6 +63,9 @@
 {% block scripts %}
 <script>
 (function(){
+  const chatRoot = document.getElementById('chatRoot');
+  const orderClosed = chatRoot && chatRoot.dataset.orderClosed === '1';
+
   const messagesEl = document.getElementById('messages');
   if(messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
 
@@ -67,6 +76,18 @@
   function getCsrfToken(){
     const el = document.querySelector('[name=csrfmiddlewaretoken]');
     return el ? el.value : '';
+  }
+
+  // If order is closed, prevent any client-side submission attempts
+  if (orderClosed) {
+    if (form) {
+      form.addEventListener('submit', function(e){
+        e.preventDefault();
+        alert('Ордер закрито — надсилання повідомлень недоступне.');
+      });
+    }
+    if (paidBtn) paidBtn.disabled = true;
+    return; // don't attach handlers for uploading/sending
   }
 
   // receipt upload via "Оплачено" button
@@ -119,7 +140,12 @@
           window.location.href = res.url;
           return;
         }
-        window.location.reload();
+        if(res.ok){
+          window.location.reload();
+        } else {
+          const js = await res.json().catch(()=>null);
+          alert(js && js.error ? js.error : ('Помилка: ' + res.status));
+        }
       } catch(e){
         console.error(e); alert('Помилка відправки повідомлення');
       }

@@ -73,6 +73,9 @@
       <a href="{% url 'password_change' %}" class="profile-btn">🔒 Змінити пароль</a>
       <a href="{% url 'password_reset' %}" class="profile-btn-outline">❓ Забули пароль?</a>
       <a href="#" class="profile-btn-outline" onclick="alert('Функція зміни email у розробці')">✉️ Змінити email</a>
+        <p style="margin-top:12px;">
+    <a class="btn btn-outline" href="{% url 'archived_conversations' %}">Архів чатів</a>
+  </p>
     </div>
 
     <form method="post" action="{% url 'logout' %}">

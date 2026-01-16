@@ -5,7 +5,7 @@
 
 {% block head_extra %}
 <style>
-/* Product detail scoped styles (keeps layout independent from catalog .product-card rules) */
+/* Product detail scoped styles (kept compact) */
 #product-detail { padding: 28px 0; color: var(--white); }
 #product-detail .inner { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 #product-detail .layout { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; justify-content:center; }
@@ -13,12 +13,14 @@
 /* Image column */
 #product-detail .img-col { flex:1; max-width:560px; min-width:260px; }
 #product-detail .product-img-wrap { width:100%; height:420px; overflow:hidden; border-radius:12px; background:#0b0b0b; }
-#product-detail .product-img { width:100%; height:100%; object-fit:cover; display:block; }
+#product-detail .product-img, #product-detail .product-iframe { width:100%; height:100%; object-fit:cover; display:block; border:0; }
 
 /* Thumbnails */
-#product-detail .thumbs { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
-#product-detail .thumb { width:56px; height:56px; border-radius:6px; overflow:hidden; cursor:pointer; border:1px solid rgba(255,255,255,0.04); background:#111; display:inline-block; }
+#product-detail .thumbs { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+#product-detail .thumb { width:56px; height:56px; border-radius:6px; overflow:hidden; cursor:pointer; border:2px solid transparent; background:#111; display:inline-block; position:relative; }
 #product-detail .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+#product-detail .thumb.active { border-color:#2a9d8f; box-shadow:0 6px 18px rgba(0,0,0,0.35); }
+#product-detail .thumb-thumb-video .play-icon, .thumb-video .play-icon { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); color:#fff; font-weight:800; pointer-events:none; font-size:14px; }
 
 /* Info column */
 #product-detail .info-col { flex:1; min-width:280px; max-width:640px; }
@@ -44,10 +46,6 @@
 /* Messages */
 #product-detail #product-msg { margin-top:12px; color:var(--muted); }
 
-/* Reviews */
-#product-detail .review-card { padding:12px; border-radius:8px; background:rgba(255,255,255,0.02); margin-bottom:8px; color:var(--muted); }
-#product-detail .btn-action { padding:8px 12px; border-radius:8px; background:linear-gradient(90deg,#e74c3c,#ff6b57); color:#fff; border:none; font-weight:700; cursor:pointer; }
-
 /* Responsive */
 @media (max-width: 900px) {
   #product-detail .product-img-wrap { height:320px; }
@@ -57,45 +55,193 @@
 {% endblock %}
 
 {% block content %}
-<div id="product-detail">
+<div id="product-detail" class="{% if not product.in_stock %}product-out-of-stock{% endif %}">
   <div class="inner">
     <div class="layout" role="main" aria-labelledby="product-title">
       <!-- Left: images -->
       <div class="img-col">
-        <div class="product-img-wrap" aria-hidden="false">
-          {% if images %}
-            {% if images.0.url %}
-              <img id="mainImage" src="{{ images.0.url }}" alt="{{ product.name }}" class="product-img" onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
-            {% else %}
-              <img id="mainImage" src="{{ images.0 }}" alt="{{ product.name }}" class="product-img" onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
-            {% endif %}
-          {% elif product.image and product.image.url %}
-            <img id="mainImage" src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img" onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
-          {% else %}
-            <img id="mainImage" src="{% static 'images/png/placeholder.png' %}" alt="{{ product.name }}" class="product-img">
-          {% endif %}
-        </div>
+        {# замінити існуючий блок product-img-wrap + thumbs на це #}
+<div class="product-img-wrap" aria-hidden="false">
+  <div id="mediaContainer">
+    {% if product.id == 1 %}
+      <img id="mainImage" src="{% static 'images/вугор 1.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% elif product.id == 2 %}
+      <img id="mainImage" src="{% static 'images/карась печений 1.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% elif product.id == 3 %}
+      <img id="mainImage" src="{% static 'images/ціла стейк філе 1.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% elif product.id == 4 %}
+      <img id="mainImage" src="{% static 'images/ікра кети 1.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% elif product.id == 5 %}
+      <img id="mainImage" src="{% static 'images/ікра кети преміум 1.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% elif product.id == 6 %}
+      <img id="mainImage" src="{% static 'images/ікра форелі пастеризована.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% elif product.id == 7 %}
+      <img id="mainImage" src="{% static 'images/ікра чорна 1.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% elif product.id == 8 %}
+      <img id="mainImage" src="{% static 'images/ікра щукі слабосолена 1.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% elif product.id == 9 %}
+      <img id="mainImage" src="{% static 'images/медальйони із шматочків тунця.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% elif product.id == 10 %}
+      <img id="mainImage" src="{% static 'images/мясо краба 1.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% elif product.id == 11 %}
+      <img id="mainImage" src="{% static 'images/печінка тріски 1.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% elif product.id == 12 %}
+      <img id="mainImage" src="{% static 'images/червона ікра кета.jpg' %}" alt="{{ product.name }}" class="product-img"
+           onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+    {% else %}
+      <img id="mainImage" src="{% static 'images/png/placeholder.png' %}" alt="{{ product.name }}" class="product-img">
+    {% endif %}
+  </div>
+</div>
 
-        <div class="thumbs" aria-hidden="false" id="thumbs">
-          {% if images %}
-            {% for img in images %}
-              {% if img.url %}
-                <div class="thumb" data-img-url="{{ img.url }}" title="{{ img.alt|default:product.name }}">
-                  <img src="{{ img.url }}" alt="{{ img.alt|default:product.name }}" onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
-                </div>
-              {% else %}
-                <div class="thumb" data-img-url="{{ img }}">
-                  <img src="{{ img }}" alt="{{ product.name }}" onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
-                </div>
-              {% endif %}
-            {% endfor %}
-          {% elif product.image and product.image.url %}
-            <div class="thumb" data-img-url="{{ product.image.url }}">
-              <img src="{{ product.image.url }}" alt="{{ product.name }}" onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
-            </div>
-          {% else %}
-            <div class="thumb" data-img-url="{% static 'images/png/placeholder.png' %}">
-              <img src="{% static 'images/png/placeholder.png' %}" alt="placeholder">
+<div class="thumbs" aria-hidden="false" id="thumbs">
+  {# image thumbs (приклад для id 1) #}
+  {% if product.id == 1 %}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/вугор 1.jpg' %}">
+      <img src="{% static 'images/вугор 1.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/вугор 2.jpg' %}">
+      <img src="{% static 'images/вугор 2.jpg' %}" alt="thumb2">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/вугор 3.jpg' %}">
+      <img src="{% static 'images/вугор 3.jpg' %}" alt="thumb3">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/вугор 5.jpg' %}">
+      <img src="{% static 'images/вугор 5.jpg' %}" alt="thumb5">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/вугор 4.jpg' %}">
+      <img src="{% static 'images/вугор 4.jpg' %}" alt="thumb4">
+    </div>
+    {# video thumb: беремо URL з моделі (або вставляємо рядок) #}
+    <div class="thumb thumb-video" data-type="video" data-video-url="{{ product.youtube_url }}">
+      <img src="{% static 'images/thumbs/video_placeholder.png' %}" alt="video">
+      <span class="play-icon">▶</span>
+    </div>
+
+  {% elif product.id == 2 %}
+    {# thumbs для product.id == 2 #}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/карась печений 1.jpg' %}">
+      <img src="{% static 'images/карась печений 1.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/карась печений 2.jpg' %}">
+      <img src="{% static 'images/карась печений 2.jpg' %}" alt="thumb">
+    </div>
+
+    {% elif product.id == 3 %}
+    {# thumbs для product.id == 3 #}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ціла стейк філе 1.jpg' %}">
+      <img src="{% static 'images/ціла стейк філе 1.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ціла стей філе 2.jpg' %}">
+      <img src="{% static 'images/ціла стей філе 2.jpg' %}" alt="thumb">
+    </div>
+
+    {% elif product.id == 4 %}
+    {# thumbs для product.id == 4 #}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра кети 1.jpg' %}">
+      <img src="{% static 'images/ікра кети 1.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра кети 2.jpg' %}">
+      <img src="{% static 'images/ікра кети 2.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра кети 3.jpg' %}">
+      <img src="{% static 'images/ікра кети 3.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра кети 4.jpg' %}">
+      <img src="{% static 'images/ікра кети 4.jpg' %}" alt="thumb">
+    </div>
+
+    {% elif product.id == 5 %}
+    {# thumbs для product.id == 5 #}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра кети преміум 1.jpg' %}">
+      <img src="{% static 'images/ікра кети преміум 1.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра кети преміум 2.jpg' %}">
+      <img src="{% static 'images/ікра кети преміум 2.jpg' %}" alt="thumb">
+    </div>
+
+    {% elif product.id == 6 %}
+    {# thumbs для product.id == 6 #}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра форелі пастеризована.jpg' %}">
+      <img src="{% static 'images/ікра форелі пастеризована.jpg' %}" alt="thumb">
+    </div>
+
+    {% elif product.id == 7 %}
+    {# thumbs для product.id == 7 #}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра чорна 1.jpg' %}">
+      <img src="{% static 'images/ікра чорна 1.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра чорна 2.jpg' %}">
+      <img src="{% static 'images/ікра чорна 2.jpg' %}" alt="thumb">
+    </div>
+
+    {% elif product.id == 8 %}
+    {# thumbs для product.id == 8 #}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра щукі слабосолена 1.jpg' %}">
+      <img src="{% static 'images/ікра щукі слабосолена 1.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра щукі слабосолена 2.jpg' %}">
+      <img src="{% static 'images/ікра щукі слабосолена 2.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра щукі слабосолена 3.jpg' %}">
+      <img src="{% static 'images/ікра щукі слабосолена 3.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/ікра щукі слабосолена 4.jpg' %}">
+      <img src="{% static 'images/ікра щукі слабосолена 4.jpg' %}" alt="thumb">
+    </div>
+
+    {% elif product.id == 9 %}
+    {# thumbs для product.id == 9 # }
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/медальйони із шматочків тунця.jpg' %}">
+      <img src="{% static 'images/медальйони із шматочків тунця.jpg' %}" alt="thumb">
+    </div>
+
+    {% elif product.id == 10 %}
+    {# thumbs для product.id == 10 #}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/мясо краба 1.jpg' %}">
+      <img src="{% static 'images/мясо краба 1.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/мясо краба 2.jpg' %}">
+      <img src="{% static 'images/мясо краба 2.jpg' %}" alt="thumb">
+    </div>
+
+    {% elif product.id == 11 %}
+    {# thumbs для product.id == 11 #}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/печінка тріски 1.jpg' %}">
+      <img src="{% static 'images/печінка тріски 1.jpg' %}" alt="thumb">
+    </div>
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/печінка тріски 2.jpg' %}">
+      <img src="{% static 'images/печінка тріски 2.jpg' %}" alt="thumb">
+    </div>
+
+    {% elif product.id == 12 %}
+    {# thumbs для product.id == 12 #}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/червона ікра кета.jpg' %}">
+      <img src="{% static 'images/червона ікра кета.jpg' %}" alt="thumb">
+    </div>
+  {% else %}
+    <div class="thumb" data-type="image" data-img-url="{% static 'images/png/placeholder.png' %}">
+      <img src="{% static 'images/png/placeholder.png' %}" alt="placeholder">
+    </div>
+  {% endif %}
+</div>
+
+          {# Video thumb (only if a URL exists) #}
+          {% if product.youtube_url %}
+            <div class="thumb thumb-video" data-type="video" data-video-url="{{ product.youtube_url }}">
+              <img src="{% static 'images/thumbs/video_placeholder.png' %}" alt="video">
+              <span class="play-icon">▶</span>
             </div>
           {% endif %}
         </div>
@@ -124,7 +270,10 @@
 
           <div style="display:flex;gap:10px;align-items:center">
             {% if user.is_authenticated %}
-              <button id="addToCart" class="btn-add" data-product-id="{{ product.id }}">До кошика</button>
+              <button id="addToCart" class="btn-add" data-product-id="{{ product.id }}"
+                {% if not product.in_stock %}disabled title="Товар тимчасово відсутній"{% endif %}>
+                {% if product.in_stock %}До кошика{% else %}Немає в наявності{% endif %}
+              </button>
             {% else %}
               <a href="{% url 'login' %}?next={{ request.path }}" class="btn-add">Увійти, щоб купити</a>
             {% endif %}
@@ -157,7 +306,7 @@
         <h4 style="color:var(--white)">Опис</h4>
         <p style="color:var(--muted)">{{ product.description }}</p>
 
-        <!-- Reviews (unchanged) -->
+        <!-- Reviews -->
         <section id="reviews" style="margin-top:28px;">
           <h3 style="color:var(--white)">Відгуки{% if average_rating %} — середній рейтинг: {{ average_rating }}{% endif %}</h3>
 
@@ -212,9 +361,9 @@
 
 {% block scripts %}
 <script>
-(function(){
-  /* Scoped selectors */
-  const mainImage = document.getElementById('mainImage');
+document.addEventListener('DOMContentLoaded', function () {
+  // Scoped selectors
+  const mediaContainer = document.getElementById('mediaContainer');
   const thumbs = document.getElementById('thumbs');
   const qtyInput = document.getElementById('qty');
   const qtyIncr = document.getElementById('qty-incr');
@@ -224,6 +373,8 @@
   const favIcon = document.getElementById('favIcon');
   const submitBtn = document.getElementById('submitReviewBtn');
   const reviewMsgEl = document.getElementById('reviewMsg');
+  const toggleBtn = document.getElementById('toggleStockBtn');
+  const stockBadge = document.getElementById('stockBadge');
 
   function getCookie(name) {
     let cookieValue = null;
@@ -241,25 +392,74 @@
   }
   const csrftoken = getCookie('csrftoken');
 
-  /* Quantity handlers */
+  // Quantity handlers
   if (qtyIncr && qtyDecr && qtyInput) {
     qtyIncr.addEventListener('click', () => qtyInput.value = Math.max(1, parseInt(qtyInput.value||1) + 1));
     qtyDecr.addEventListener('click', () => qtyInput.value = Math.max(1, parseInt(qtyInput.value||1) - 1));
   }
 
-  /* Thumbnails click -> change main image, with simple active class */
-  if (thumbs) {
+  // Gallery logic (one handler)
+  if (mediaContainer && thumbs) {
+    function extractYouTubeId(url) {
+      if (!url) return null;
+      const patterns = [
+        /(?:v=)([0-9A-Za-z_-]{11})/,
+        /(?:embed\/)([0-9A-Za-z_-]{11})/,
+        /(?:youtu\.be\/)([0-9A-Za-z_-]{11})/,
+        /(?:shorts\/)([0-9A-Za-z_-]{11})/
+      ];
+      for (const re of patterns) {
+        const m = url.match(re);
+        if (m && m[1]) return m[1];
+      }
+      const any = url.match(/([0-9A-Za-z_-]{11})/);
+      return any ? any[1] : null;
+    }
+
+    function showImage(url) {
+      mediaContainer.innerHTML = '';
+      const img = document.createElement('img');
+      img.className = 'product-img';
+      img.src = url;
+      img.alt = '{{ product.name|escapejs }}';
+      img.onerror = function(){ this.onerror=null; this.src = '{% static "images/png/placeholder.png" %}'; };
+      mediaContainer.appendChild(img);
+    }
+
+    function showYouTube(url) {
+      const vid = extractYouTubeId(url);
+      if (!vid) { window.open(url, '_blank'); return; }
+      mediaContainer.innerHTML = '';
+      const iframe = document.createElement('iframe');
+      iframe.className = 'product-iframe';
+      iframe.src = 'https://www.youtube.com/embed/' + vid + '?rel=0&modestbranding=1';
+      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      iframe.allowFullscreen = true;
+      iframe.frameBorder = 0;
+      mediaContainer.appendChild(iframe);
+    }
+
+    // mark first thumbnail active
+    const list = thumbs.querySelectorAll('.thumb');
+    if (list.length) list[0].classList.add('active');
+
     thumbs.querySelectorAll('.thumb').forEach(t => {
-      t.addEventListener('click', () => {
-        const url = t.dataset.imgUrl || (t.querySelector('img') && t.querySelector('img').src);
-        if (url && mainImage) mainImage.src = url;
+      t.addEventListener('click', function () {
+        const type = this.dataset.type || 'image';
+        if (type === 'image') {
+          const url = this.dataset.imgUrl;
+          if (url) showImage(url);
+        } else if (type === 'video') {
+          const vurl = this.dataset.videoUrl || this.getAttribute('data-video-url') || '';
+          if (vurl) showYouTube(vurl);
+        }
         thumbs.querySelectorAll('.thumb').forEach(x => x.classList.remove('active'));
-        t.classList.add('active');
+        this.classList.add('active');
       });
     });
   }
 
-  /* Add to cart (AJAX) */
+  // Add to cart (AJAX)
   if (addBtn) {
     addBtn.addEventListener('click', async function(){
       const pid = this.dataset.productId;
@@ -270,8 +470,8 @@
       data.append('name', '{{ product.name|escapejs }}');
       data.append('price', '{{ product.price_per_100g|default:"0" }}');
       data.append('currency', 'UAH');
-      const imgSrc = mainImage ? mainImage.src : '{% static "images/png/placeholder.png" %}';
-      data.append('image', imgSrc);
+      const currentImg = mediaContainer && mediaContainer.querySelector('img') ? mediaContainer.querySelector('img').src : '{% static "images/png/placeholder.png" %}';
+      data.append('image', currentImg);
 
       this.disabled = true;
       const origText = this.textContent;
@@ -280,7 +480,8 @@
         const res = await fetch("{% url 'add_to_cart' %}", {
           method: 'POST',
           headers: {'X-CSRFToken': csrftoken},
-          body: data
+          body: data,
+          credentials: 'same-origin'
         });
         const json = await res.json().catch(()=>({ok:false, error:'Invalid response'}));
         if (!res.ok) {
@@ -307,7 +508,7 @@
     });
   }
 
-  /* Favorite toggle */
+  // Favorite toggle
   if (favBtn) {
     favBtn.addEventListener('click', async function(){
       const pid = this.dataset.productId;
@@ -316,7 +517,8 @@
         const res = await fetch("{% url 'toggle_favorite' %}", {
           method: 'POST',
           headers: {'X-CSRFToken': csrftoken},
-          body: new URLSearchParams({product_id: pid})
+          body: new URLSearchParams({product_id: pid}),
+          credentials: 'same-origin'
         });
         const json = await res.json();
         if (!res.ok && json && json.login_url) {
@@ -324,14 +526,10 @@
           return;
         }
         if (json.ok) {
-          if (json.favorited) {
-            favBtn.classList.add('favorited'); favIcon.textContent = '❤️';
-          } else {
-            favBtn.classList.remove('favorited'); favIcon.textContent = '🤍';
-          }
+          if (json.favorited) { favBtn.classList.add('favorited'); favIcon.textContent = '❤️'; }
+          else { favBtn.classList.remove('favorited'); favIcon.textContent = '🤍'; }
         } else {
           alert(json.error || 'Помилка обраного');
-          if (was) { favBtn.classList.add('favorited'); favIcon.textContent='❤️'; } else { favBtn.classList.remove('favorited'); favIcon.textContent='🤍'; }
         }
       } catch (err) {
         console.error(err);
@@ -340,7 +538,7 @@
     });
   }
 
-  /* Submit review (AJAX) */
+  // Submit review
   if (submitBtn) {
     submitBtn.addEventListener('click', async function(){
       const ratingEl = document.getElementById('reviewRating');
@@ -355,14 +553,12 @@
         const res = await fetch(url, {
           method: 'POST',
           headers: {'X-CSRFToken': csrftoken, 'Content-Type': 'application/x-www-form-urlencoded'},
-          body: new URLSearchParams({rating: rating, comment: comment})
+          body: new URLSearchParams({rating: rating, comment: comment}),
+          credentials: 'same-origin'
         });
         const json = await res.json();
         if (!res.ok) {
-          if (json && json.login_url) {
-            window.location.href = json.login_url + '&next=' + encodeURIComponent(window.location.pathname);
-            return;
-          }
+          if (json && json.login_url) { window.location.href = json.login_url + '&next=' + encodeURIComponent(window.location.pathname); return; }
           reviewMsgEl.style.color = '#ff8a8a';
           reviewMsgEl.textContent = json.error || ('Помилка: ' + res.status);
         } else {
@@ -381,14 +577,11 @@
     });
   }
 
-  /* Toggle availability (staff) */
-  const toggleBtn = document.getElementById('toggleStockBtn');
-  const stockBadge = document.getElementById('stockBadge');
+  // Toggle availability (staff)
   if (toggleBtn) {
     toggleBtn.addEventListener('click', async function(){
       if (!confirm('Підтвердити зміну доступності товару?')) return;
       const pid = this.dataset.productId;
-      // build URL: using named URL pattern toggle_availability
       const base = "{% url 'toggle_availability' 0 %}";
       const url = base.replace('/0/', '/' + pid + '/');
       try {
@@ -419,16 +612,6 @@
     });
   }
 
-})();
-
-if (addBtn) {
-  addBtn.addEventListener('click', async function(){
-    if (this.disabled) {
-      alert('Товар тимчасово відсутній і не може бути доданий у кошик.');
-      return;
-    }
-    // ... existing add to cart code ...
-  });
-}
+});
 </script>
 {% endblock %}

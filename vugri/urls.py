@@ -64,6 +64,8 @@ urlpatterns = [
     path('conversations/all/', seafood_views.all_conversations, name='all_conversations'),
     path('chat/<int:conv_id>/confirm_payment/', seafood_views.confirm_payment, name='confirm_payment'),
     path('product/<int:product_id>/toggle_availability/', seafood_views.toggle_availability, name='toggle_availability'),
+    path('chat/<int:conv_id>/close_order/', seafood_views.close_order, name='close_order'),
+    path('conversations/archived/', seafood_views.archived_conversations, name='archived_conversations'),
 
 ]
 
