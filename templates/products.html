@@ -148,7 +148,17 @@
       <div class="card-body">
         <h3 id="p-{{ p.id }}" class="product-title">{{ p.name }}</h3>
         <div class="product-meta">{{ p.description|default:'' }}</div>
-        <div class="product-price">{% if p.price_per_100g %}Ціна: {{ p.price_per_100g }} грн /100г{% else %}Ціна уточнюється{% endif %}</div>
+        <div class="price">
+  {% if p.package_price_display %}
+    <strong>1 шт — {{ p.package_price_display }} грн</strong>
+  {% else %}
+    {% if p.price_per_100g %}
+      <strong>{{ p.price_per_100g|floatformat:2 }} грн / 100г</strong>
+    {% else %}
+      <span>Ціна уточнюється</span>
+    {% endif %}
+  {% endif %}
+</div>
       </div>
 
       <div class="product-actions">

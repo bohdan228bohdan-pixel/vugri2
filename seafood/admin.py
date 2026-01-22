@@ -24,18 +24,39 @@ class ProductImageInline(admin.TabularInline):
 
 @admin.register(SeafoodProduct)
 class SeafoodProductAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'category', 'price_per_100g', 'in_stock', 'youtube_preview_short')
+    # Показуємо категорії через helper (щоб відображати M2M у списку)
+    list_display = ('id', 'name', 'categories_list', 'price_per_100g', 'in_stock', 'package_size_grams', 'youtube_preview_short')
     list_editable = ('in_stock',)
     inlines = [ProductImageInline]
 
-    # show youtube_url in the edit form and a small preview
-    fields = ('name', 'description', 'price_per_100g', 'image', 'youtube_url', 'youtube_preview', 'category', 'in_stock')
+    # У формі редагування даємо можливість вибрати кілька категорій
+    fields = (
+        'name',
+        'description',
+        'price_per_100g',
+        'package_size_grams',
+        'image',
+        'youtube_url',
+        'youtube_preview',
+        'categories',   # M2M поле
+        'category',     # legacy FK (залишено для плавного переходу)
+        'in_stock',
+    )
     readonly_fields = ('youtube_preview',)
+
+    # Зручний віджет у адмінці для many-to-many
+    filter_horizontal = ('categories',)
+
+    def categories_list(self, obj):
+        qs = obj.categories.all()
+        if not qs:
+            return '-'
+        return ", ".join([c.name for c in qs])
+    categories_list.short_description = "Категорії"
 
     def youtube_preview(self, obj):
         """
-        Full preview shown on the change form. Embeds the YouTube iframe if possible,
-        otherwise provides a link to the URL.
+        Full preview shown on the change form. Embed only if possible; otherwise provide link/thumbnail.
         """
         url = getattr(obj, 'youtube_url', None)
         if not url:
@@ -43,15 +64,29 @@ class SeafoodProductAdmin(admin.ModelAdmin):
         m = re.search(r'(?:v=|embed/|youtu\.be/|shorts/)([0-9A-Za-z_-]{11})', url)
         vid = m.group(1) if m else None
         if vid:
+            # safer preview: show thumbnail + links to YouTube and embed (avoid automatic iframe to prevent 153)
+            thumb = f'https://img.youtube.com/vi/{vid}/hqdefault.jpg'
+            watch = f'https://youtu.be/{vid}'
             embed = f'https://www.youtube.com/embed/{vid}'
-            return mark_safe(f'<iframe width="420" height="236" src="{embed}" frameborder="0" allowfullscreen></iframe>')
+            html = (
+                f'<div style="display:flex;gap:10px;align-items:center;">'
+                f'  <a href="{watch}" target="_blank" rel="noopener">'
+                f'    <img src="{thumb}" alt="YouTube thumbnail" style="width:260px;height:auto;border-radius:6px;object-fit:cover;">'
+                f'  </a>'
+                f'  <div style="display:flex;flex-direction:column;gap:6px;">'
+                f'    <a class="button" href="{watch}" target="_blank" rel="noopener">Відкрити на YouTube</a>'
+                f'    <a class="button" href="{embed}" target="_blank" rel="noopener">Відкрити embed</a>'
+                f'    <div style="color:#999;font-size:90%;">Якщо вбудовування заборонене — відкрийте на YouTube.</div>'
+                f'  </div>'
+                f'</div>'
+            )
+            return mark_safe(html)
         return mark_safe(f'<a href="{url}" target="_blank" rel="noopener">Відкрити відео</a>')
     youtube_preview.short_description = "Перегляд відео"
 
     def youtube_preview_short(self, obj):
         """
         Small thumbnail for list_display (keeps list compact).
-        Shows a small clickable thumbnail that opens YouTube in a new tab.
         """
         url = getattr(obj, 'youtube_url', None)
         if not url:
@@ -66,6 +101,7 @@ class SeafoodProductAdmin(admin.ModelAdmin):
             )
         return mark_safe(f'<a href="{url}" target="_blank" rel="noopener">Відео</a>')
     youtube_preview_short.short_description = 'Відео'
+
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):

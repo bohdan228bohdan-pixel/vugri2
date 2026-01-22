@@ -20,7 +20,7 @@ PRODUCTS = [
     {
         "name": "Червона ікра кети",
         "slug": "chervona_ikra_keta",
-        "price_per_100g": "1100.00",
+        "price_per_500g": "2800.00",
         "description": "Червона ікра кети — свіжий смак і аромати.",
         "images": ["chervona_ikra_keta_1.png", "chervona_ikra_keta_2.png"]
     },

@@ -31,6 +31,9 @@ class Category(models.Model):
         super().save(*args, **kwargs)
 
 
+from django.db import models
+from django.utils import timezone
+
 class SeafoodProduct(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -39,13 +42,31 @@ class SeafoodProduct(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     youtube_url = models.URLField(blank=True, null=True)
 
-    # Category relation (optional)
-    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name='products')
+    # Legacy single-category FK (kept for compatibility during transition).
+    # NOTE: related_name is different from the M2M related_name to avoid clashes.
+    category = models.ForeignKey(
+        'Category',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='legacy_products'
+    )
+
+    # Proper many-to-many: product can belong to multiple categories.
+    # Keep related_name='products' (use this in templates/filters).
+    categories = models.ManyToManyField('Category', blank=True, related_name='products')
 
     # Availability flag
     in_stock = models.BooleanField(
         default=True,
         help_text="True — в наявності; False — немає в наявності"
+    )
+
+    # If set, product is sold by package of this many grams (e.g. 500, 1000)
+    package_size_grams = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Якщо встановлено, товар продається упаковками цього розміру (в грамах), наприклад 500"
     )
 
     class Meta:
@@ -56,6 +77,42 @@ class SeafoodProduct(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        """
+        Backfill M2M from legacy FK on save to ease transition:
+        if `category` is set ensure it's present in `categories`.
+        """
+        super().save(*args, **kwargs)
+        try:
+            if self.category:
+                if not self.categories.filter(pk=self.category.pk).exists():
+                    self.categories.add(self.category)
+        except Exception:
+            pass
+
+    @property
+    def is_sold_by_package(self):
+        return bool(self.package_size_grams)
+
+    def compute_package_price(self):
+        """
+        Returns Decimal package price (price for one package) or None.
+        Requires price_per_100g to be set.
+        """
+        try:
+            if self.package_size_grams and self.price_per_100g is not None:
+                price100 = Decimal(str(self.price_per_100g or '0'))
+                pkg = Decimal(self.package_size_grams)
+                pkg_price = (price100 * (pkg / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                return pkg_price
+        except Exception:
+            pass
+        return None
+
+    @property
+    def package_price_display(self):
+        p = self.compute_package_price()
+        return "{:.2f}".format(p) if p is not None else None
 
 class EmailVerification(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

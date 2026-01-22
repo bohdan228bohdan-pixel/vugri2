@@ -128,7 +128,17 @@
 
           <div class="cart-item-info">
             <div class="title">{{ item.name }}</div>
-            <div class="meta">{{ item.price }} {{ item.currency }} / 100г</div>
+<div class="price">
+  {% if p.package_price_display %}
+    <strong>1 шт — {{ p.package_price_display }} грн</strong>
+  {% else %}
+    {% if p.price_per_100g %}
+      <strong>{{ p.price_per_100g|floatformat:2 }} грн / 100г</strong>
+    {% else %}
+      <span>Ціна уточнюється</span>
+    {% endif %}
+  {% endif %}
+</div>
           </div>
 
           <div class="cart-qty-wrap">

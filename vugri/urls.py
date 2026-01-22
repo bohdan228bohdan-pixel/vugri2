@@ -66,6 +66,8 @@ urlpatterns = [
     path('product/<int:product_id>/toggle_availability/', seafood_views.toggle_availability, name='toggle_availability'),
     path('chat/<int:conv_id>/close_order/', seafood_views.close_order, name='close_order'),
     path('conversations/archived/', seafood_views.archived_conversations, name='archived_conversations'),
+    path('review/<int:review_id>/delete/', seafood_views.delete_review, name='delete_review'),
+    path('debug/session-cart/', seafood_views.debug_session_cart, name='debug_session_cart'),
 
 ]
 

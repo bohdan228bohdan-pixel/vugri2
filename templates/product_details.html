@@ -189,13 +189,24 @@
 
           <div class="product-meta">{{ product.description }}</div>
 
-          <div class="price">
-            {% if product.price_per_100g %}
-              {{ product.price_per_100g }} грн / 100г
-            {% else %}
-              Ціна уточнюється
-            {% endif %}
-          </div>
+<div class="price">
+  {% comment %}
+    Якщо view передав package_price (рядок, наприклад "2800.00") — показуємо його як ціну за один екземпляр (1 шт).
+    Інакше — показуємо стандартну ціну за 100г.
+  {% endcomment %}
+
+  {% if package_price %}
+    <strong style="font-size:28px;color:#fff">{{ package_price }} грн</strong>
+    <span style="color:var(--muted)"> / 1 шт</span>
+  {% else %}
+    {% if product.price_per_100g %}
+      <strong style="font-size:28px;color:#fff">{{ product.price_per_100g|floatformat:2 }} грн</strong>
+      <span style="color:var(--muted)"> / 100г</span>
+    {% else %}
+      <span style="color:var(--muted)">Ціна уточнюється</span>
+    {% endif %}
+  {% endif %}
+</div>
 
           <div class="controls-row" role="group" aria-label="Дії з товаром">
             <div style="display:flex;align-items:center;gap:8px">
@@ -244,7 +255,7 @@
       </div>
 
       <!-- REVIEWS -->
-      <section id="reviews" aria-labelledby="reviews-heading" style="margin-top:28px;">
+            <section id="reviews" aria-labelledby="reviews-heading" style="margin-top:28px;">
         <h3 id="reviews-heading" style="color:var(--white)">Відгуки{% if average_rating %} — середній рейтинг: {{ average_rating }}{% endif %}</h3>
 
         {% if user.is_authenticated %}
@@ -274,12 +285,30 @@
         <div id="reviewsList" style="margin-top:18px;">
           {% if reviews %}
             {% for r in reviews %}
-              <div class="review-card" role="article" aria-label="Відгук від {{ r.user.username }}">
-                <div class="review-head">
-                  <div class="review-user">{{ r.user.username }}</div>
-                  <div class="review-time" style="color:var(--muted)">{{ r.created_at|date:"SHORT_DATETIME_FORMAT" }}</div>
+              <div id="review-{{ r.id }}" class="review-card" role="article" aria-label="Відгук від {{ r.user.username }}" style="position:relative;padding:12px;border-bottom:1px solid rgba(255,255,255,0.03);margin-bottom:8px;">
+                <div class="review-head" style="display:flex;justify-content:space-between;align-items:center;">
+                  <div>
+                    <div class="review-user" style="font-weight:700;color:#fff">{{ r.user.username }}</div>
+                    <div class="review-time" style="color:var(--muted);font-size:13px">{{ r.created_at|date:"SHORT_DATETIME_FORMAT" }}</div>
+                  </div>
+
+                  {# Delete button for VugriUa only (visible in UI only for that account) #}
+                  {% if user.is_authenticated and user.username == 'VugriUa' %}
+                    <div style="margin-left:12px;">
+                      <button
+                        type="button"
+                        class="delete-review-btn btn-outline"
+                        data-review-id="{{ r.id }}"
+                        data-delete-url="{% url 'delete_review' r.id %}"
+                        style="padding:6px 10px;border-radius:6px;"
+                        title="Видалити відгук">
+                        Видалити
+                      </button>
+                    </div>
+                  {% endif %}
                 </div>
-                <div style="margin-top:6px;color:var(--muted)">Рейтинг: {{ r.rating }} / 5</div>
+
+                <div style="margin-top:8px;color:var(--muted)">Рейтинг: {{ r.rating }} / 5</div>
                 {% if r.comment %}
                   <div style="margin-top:8px;color:var(--muted)">{{ r.comment }}</div>
                 {% endif %}
@@ -290,6 +319,7 @@
           {% endif %}
         </div>
       </section>
+
 
     </div>
   </div>
@@ -443,50 +473,71 @@ document.addEventListener('DOMContentLoaded', function () {
   } // end gallery
 
   // ------- Add to cart (unchanged behaviour, robustified) -------
-  if (addBtn) {
-    addBtn.addEventListener('click', async function(){
-      const pid = this.dataset.productId;
-      const qty = Math.max(1, parseInt(qtyInput.value || 1));
-      const data = new URLSearchParams();
-      data.append('product_id', pid);
-      data.append('quantity', qty);
-      data.append('name', '{{ product.name|escapejs }}');
-      data.append('price', '{{ product.price_per_100g|default:"0" }}');
-      data.append('currency', 'UAH');
-      const currentImg = mediaContainer && mediaContainer.querySelector('img') ? mediaContainer.querySelector('img').src : '{% static "images/png/placeholder.png" %}';
-      data.append('image', currentImg);
+if (addBtn) {
+  addBtn.addEventListener('click', async function(){
+    const pid = this.dataset.productId;
+    const qty = Math.max(1, parseInt(qtyInput.value || 1));
+    const data = new URLSearchParams();
+    data.append('product_id', pid);
+    data.append('quantity', qty);
+    data.append('currency', 'UAH');
+    const currentImg = mediaContainer && mediaContainer.querySelector('img') ? mediaContainer.querySelector('img').src : '{% static "images/png/placeholder.png" %}';
+    data.append('image', currentImg);
+    data.append('name', '{{ product.name|escapejs }}');
 
-      this.disabled = true;
-      const origText = this.textContent;
-      this.textContent = 'Додаю...';
-      try {
-        const res = await fetch("{% url 'add_to_cart' %}", {
-          method: 'POST',
-          headers: {'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest'},
-          body: data,
-          credentials: 'same-origin'
-        });
-        const json = await res.json().catch(()=>({ok:false, error:'Invalid response'}));
-        if (!res.ok) {
-          if (json && json.login_url) { window.location.href = json.login_url + '&next=' + encodeURIComponent(window.location.pathname); return; }
-          q('#product-msg').textContent = json.error || 'Помилка додавання';
-        } else {
-          if (json.ok) {
-            q('#product-msg').textContent = 'Додано в кошик';
-            qa('#cart-count').forEach(el => el.textContent = json.cart_count);
-          } else {
-            q('#product-msg').textContent = json.error || 'Помилка';
-          }
+    this.disabled = true;
+    const origText = this.textContent;
+    this.textContent = 'Додаю...';
+
+    try {
+      const res = await fetch("{% url 'add_to_cart' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest'},
+        body: data,
+        credentials: 'same-origin'
+      });
+
+      // Безпечне читання відповіді
+      const ct = res.headers.get('content-type') || '';
+      let json = null;
+      if (ct.includes('application/json')) {
+        try {
+          json = await res.json();
+        } catch (e) {
+          const text = await res.text();
+          console.error('Invalid JSON response:', text);
+          alert('Сервер повернув некоректну JSON відповідь. Подивіться консоль.');
+          return;
         }
-      } catch (err) {
-        console.error(err);
-        q('#product-msg').textContent = 'Помилка мережі';
-      } finally {
-        this.disabled = false;
-        this.textContent = origText;
+      } else {
+        // Сервер не повернув JSON — покажемо текст для діагностики
+        const text = await res.text();
+        console.error('Non-JSON response from add_to_cart:', text);
+        alert('Помилка: сервер повернув неочікуваний формат відповіді. Перевірте консоль Network/Response.');
+        return;
       }
-    });
-  }
+
+      // Тепер обробляємо JSON
+      if (!res.ok) {
+        if (json && json.login_url) { window.location.href = json.login_url + '&next=' + encodeURIComponent(window.location.pathname); return; }
+        q('#product-msg').textContent = json.error || ('Помилка: ' + res.status);
+      } else {
+        if (json.ok) {
+          q('#product-msg').textContent = 'Додано в кошик';
+          qa('#cart-count').forEach(el => el.textContent = json.cart_count);
+        } else {
+          q('#product-msg').textContent = json.error || 'Помилка';
+        }
+      }
+    } catch (err) {
+      console.error('Network error:', err);
+      q('#product-msg').textContent = 'Помилка мережі';
+    } finally {
+      this.disabled = false;
+      this.textContent = origText;
+    }
+  });
+}
 
   // ------- Favorite, Review, Toggle availability (kept as in your code) -------
   if (favBtn) {
@@ -554,5 +605,55 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
 }); // DOMContentLoaded
+        function getCookie(name) {
+          const v = document.cookie.split('; ').find(c => c.trim().startsWith(name + '='));
+          return v ? decodeURIComponent(v.split('=')[1]) : null;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // Attach AJAX delete handlers to buttons rendered for VugriUa
+        document.querySelectorAll('.delete-review-btn').forEach(btn => {
+          btn.addEventListener('click', async function (e) {
+            e.preventDefault();
+            if (!confirm('Видалити цей відгук?')) return;
+            const reviewId = this.dataset.reviewId;
+            const url = this.dataset.deleteUrl;
+            this.disabled = true;
+            const origText = this.textContent;
+            this.textContent = 'Видаляю...';
+            try {
+              const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                  'X-CSRFToken': csrftoken,
+                  'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+              });
+              if (res.ok) {
+                const json = await res.json().catch(() => null);
+                if (json && json.ok) {
+                  // remove element from DOM
+                  const el = document.getElementById('review-' + reviewId);
+                  if (el) el.remove();
+                } else {
+                  alert((json && json.error) ? json.error : 'Не вдалося видалити відгук.');
+                  this.disabled = false;
+                  this.textContent = origText;
+                }
+              } else {
+                if (res.status === 403) alert('Недостатньо прав для видалення.');
+                else alert('Помилка сервера: ' + res.status);
+                this.disabled = false;
+                this.textContent = origText;
+              }
+            } catch (err) {
+              console.error(err);
+              alert('Помилка мережі — спробуйте пізніше.');
+              this.disabled = false;
+              this.textContent = origText;
+            }
+          });
+        });
 </script>
 {% endblock %}

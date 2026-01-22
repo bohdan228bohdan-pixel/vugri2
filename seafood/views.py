@@ -3,7 +3,7 @@ from itertools import product
 from itertools import product
 import random
 import requests
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from types import SimpleNamespace
 
 from django.conf import settings
@@ -63,7 +63,7 @@ SAMPLES = {
     4: {
     'name': 'Ікра кети',
     'description': 'Свіжі раки та краби для замовлення оптом.',
-    'price_per_100g': '580.00',
+    'price_per_500g': '280.00',
     'image': 'images/ікра кети 1.jpg'
 },
     5: {
@@ -223,8 +223,12 @@ def products(request):
     if selected_category:
         try:
             if using_category_model:
-                # фильтруем по slug связанной категории
-                qs = qs.filter(category__slug__iexact=selected_category)
+                # Поддерживаем и новое M2M `categories`, и временно legacy FK `category`
+                from django.db.models import Q
+                qs = qs.filter(
+                    Q(categories__slug__iexact=selected_category) |
+                    Q(category__slug__iexact=selected_category)
+                ).distinct()
             else:
                 # fallback: фильтруем по вхождению имени в название/описание
                 qs = qs.filter(name__icontains=selected_category)
@@ -247,6 +251,33 @@ def products(request):
         else:
             qs = qs.order_by('-id')
 
+    # --- Подготовка списка продуктов (включая пакетную цену для шаблонов) ---
+    # Превращаем qs в список, чтобы можно было добавить временные атрибуты для шаблонов
+    products_list = list(qs.select_related('category').prefetch_related('categories'))
+
+    # вычисляем package_price_display для карточек (если product.package_size_grams задан)
+    try:
+        for p in products_list:
+            try:
+                pkg = getattr(p, 'package_size_grams', None)
+                if pkg:
+                    price100 = Decimal(str(getattr(p, 'price_per_100g', '0') or '0'))
+                    pkg_price = (price100 * (Decimal(pkg) / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    p.package_price = pkg_price
+                    p.package_price_display = "{:.2f}".format(pkg_price)
+                    p.package_size = int(pkg)
+                else:
+                    p.package_price = None
+                    p.package_price_display = None
+                    p.package_size = None
+            except Exception:
+                p.package_price = None
+                p.package_price_display = None
+                p.package_size = None
+    except Exception:
+        # не ломаем страницу, если что-то пошло не так
+        pass
+
     # favorites for current user
     favorited_ids = set()
     if request.user.is_authenticated:
@@ -256,13 +287,12 @@ def products(request):
             favorited_ids = set()
 
     return render(request, 'products.html', {
-        'products': qs,
+        'products': products_list,
         'favorited_ids': favorited_ids,
         'categories': categories,
         'selected_category': selected_category,
         'current_sort': sort,
     })
-
 
 def product_details(request, product_id):
     """
@@ -273,12 +303,8 @@ def product_details(request, product_id):
       - images: list of dicts { url, alt, is_main(bool), is_video(bool), thumb_url(optional) }
       - is_favorited: bool
       - reviews, average_rating
-
-    Improvements:
-      - If DB product exists, prefer ProductImage entries (ordered by -is_main, created_at).
-      - If youtube_url present, include a video item in images (is_video=True) with a placeholder thumb.
-      - Ensure there is always at least one image dict (fallback to product.image or placeholder).
-      - Guarantee the image marked is_main appears first in the list.
+      - package_size: (int) grams if product sold in packages (e.g. 500)
+      - package_price: (string) formatted price for one package (e.g. "2800.00")
     """
     product_obj, _db_prod = _product_from_db_or_sample(product_id)
     if not product_obj:
@@ -398,14 +424,155 @@ def product_details(request, product_id):
         reviews = []
         average_rating = None
 
+    # NEW: compute package price if product stored in DB has package_size_grams
+    package_size = None
+    package_price_display = None
+    try:
+        if _db_prod and getattr(_db_prod, 'package_size_grams', None):
+            package_size = int(_db_prod.package_size_grams)
+            # price_per_100g may be Decimal or None
+            try:
+                price_per_100g = Decimal(str(_db_prod.price_per_100g or '0'))
+            except Exception:
+                price_per_100g = Decimal('0')
+            package_price = (price_per_100g * (Decimal(package_size) / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            # formatted string for template (e.g. "2800.00")
+            package_price_display = "{:.2f}".format(package_price)
+    except Exception:
+        package_size = None
+        package_price_display = None
+
+        display_currency = 'UAH'
+# приклад: якщо хочеш, щоб конкретний продукт був у USD (поки без зміни моделі)
+        if product_obj and 'Ікра чорна' in product_obj.name:
+         display_currency = 'USD'
+
     return render(request, 'product_details.html', {
         'product': product_obj,
         'images': images,
         'is_favorited': is_favorited,
         'reviews': reviews,
         'average_rating': average_rating,
-        'youtube_url': youtube_url
+        'youtube_url': youtube_url,
+        'package_size': package_size,
+        'package_price': package_price_display,
     })
+
+
+def cart_view(request):
+    session_cart = request.session.get('cart', {}) or {}
+    cart_for_template = {}
+    totals_decimal = {}  # currency -> Decimal
+    cart_count_total = 0
+    first_pid = None
+
+    for pid, it in session_cart.items():
+        try:
+            qty = int(it.get('quantity', 0))
+        except Exception:
+            qty = 0
+
+        cart_count_total += qty
+
+        # compute line total (Decimal)
+        line_total = Decimal('0.00')
+        currency = (it.get('currency') or 'UAH')
+
+        try:
+            if it.get('unit') == 'package':
+                tp = it.get('total_price')
+                if tp is not None and tp != '':
+                    line_total = Decimal(str(tp)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                else:
+                    price100 = Decimal(str(it.get('unit_price_per_100g', '0')))
+                    pkg = int(it.get('package_size_grams') or 0)
+                    line_total = (price100 * (Decimal(pkg) * Decimal(qty)) / Decimal(100)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                # unit price per single package:
+                try:
+                    pkg = int(it.get('package_size_grams') or 0)
+                    if tp is not None and tp != '':
+                        unit_price = Decimal(str(tp))
+                    else:
+                        unit_price = (Decimal(str(it.get('unit_price_per_100g', '0'))) * (Decimal(pkg) / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                except Exception:
+                    unit_price = Decimal('0.00')
+                unit_label = '1 шт'
+                package_size = it.get('package_size_grams')
+            else:
+                # unit items
+                if it.get('price_per_100g') is not None or it.get('unit_price_per_100g') is not None:
+                    price100 = Decimal(str(it.get('price_per_100g') or it.get('unit_price_per_100g') or '0'))
+                    line_total = (price100 * Decimal(qty)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    unit_price = price100
+                    unit_label = '100г'
+                    package_size = None
+                elif it.get('price') is not None:
+                    unit_price = Decimal(str(it.get('price')))
+                    line_total = (unit_price * Decimal(qty)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    unit_label = 'шт'
+                    package_size = None
+                else:
+                    unit_price = Decimal('0.00')
+                    line_total = Decimal('0.00')
+                    unit_label = ''
+                    package_size = None
+        except Exception:
+            line_total = Decimal('0.00')
+            unit_price = Decimal('0.00')
+            unit_label = ''
+            package_size = None
+
+        totals_decimal.setdefault(currency, Decimal('0.00'))
+        totals_decimal[currency] += line_total
+
+        cart_for_template[str(pid)] = {
+            'name': it.get('name', ''),
+            'image': it.get('image', ''),
+            'price': "{:.2f}".format(line_total),   # line total formatted as string
+            'currency': currency,
+            'quantity': qty,
+            'unit': it.get('unit', 'unit'),
+            'package_size_grams': package_size,
+            'unit_price_display': "{:.2f}".format(unit_price) if unit_price is not None else None,
+            'unit_label': unit_label,
+        }
+
+        if first_pid is None:
+            first_pid = pid
+
+    totals_str = {cur: "{:.2f}".format(amount) for cur, amount in totals_decimal.items()}
+
+    # recommended products
+    try:
+        recommended = list(SeafoodProduct.objects.all()[:8])
+        for p in recommended:
+            try:
+                pkg = getattr(p, 'package_size_grams', None)
+                if pkg:
+                    p.package_size = int(pkg)
+                    price100 = Decimal(str(getattr(p, 'price_per_100g', '0') or '0'))
+                    pkg_price = (price100 * (Decimal(p.package_size) / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    p.package_price = pkg_price
+                    p.package_price_display = "{:.2f}".format(pkg_price)
+                else:
+                    p.package_size = None
+                    p.package_price = None
+                    p.package_price_display = None
+            except Exception:
+                p.package_size = None
+                p.package_price = None
+                p.package_price_display = None
+    except Exception:
+        recommended = []
+
+    context = {
+        'cart': cart_for_template,
+        'totals': totals_str,
+        'first_pid': first_pid,
+        'cart_count': cart_count_total,
+        'products': recommended,
+    }
+    return render(request, 'cart.html', context)
 
 
 def order_form(request, product_id):
@@ -635,31 +802,90 @@ def add_to_cart(request):
     return JsonResponse({'ok': True, 'cart_count': cart_count(request)})
 
 def cart_view(request):
-    cart = _get_cart(request)
-    totals = {}
-    for pid, item in cart.items():
-        cur = item.get('currency', 'UAH')
-        totals.setdefault(cur, 0)
-        totals[cur] += int(item.get('price', 0)) * int(item.get('quantity', 0))
+    """
+    Рендерить сторінку кошика. Повертає:
+      - 'cart' : dict { pid: { name, image, price (line total), currency, quantity } }
+      - 'totals': dict { currency: "1234.56" } (рядки для шаблону)
+      - 'first_pid': перший product id або None (для checkout link)
+      - 'cart_count': сумарна кількість одиниць
+    Підтримує обидві структури сесійних item-ів:
+      - package items: {'unit': 'package', 'total_price' (string) , 'unit_price_per_100g', 'package_size_grams', 'quantity'}
+      - unit items: {'price_per_100g' або 'price', 'quantity'}
+    """
+    session_cart = request.session.get('cart', {}) or {}
+    cart_for_template = {}
+    totals_decimal = {}  # currency -> Decimal
+    cart_count_total = 0
+    first_pid = None
 
-    recommended = []
+    for pid, it in session_cart.items():
+        # normalize quantity
+        try:
+            qty = int(it.get('quantity', 0))
+        except Exception:
+            qty = 0
+
+        cart_count_total += qty
+
+        # compute line total (Decimal)
+        line_total = Decimal('0.00')
+        currency = (it.get('currency') or 'UAH')
+
+        try:
+            if it.get('unit') == 'package':
+                # prefer stored total_price (string), otherwise compute from unit_price_per_100g * pkg * qty
+                tp = it.get('total_price')
+                if tp is not None and tp != '':
+                    line_total = Decimal(str(tp)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                else:
+                    price100 = Decimal(str(it.get('unit_price_per_100g', '0')))
+                    pkg = int(it.get('package_size_grams') or 0)
+                    line_total = (price100 * (Decimal(pkg) * Decimal(qty)) / Decimal(100)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            else:
+                # unit items: prefer price_per_100g * qty, fallback to price * qty
+                if it.get('price_per_100g') is not None:
+                    price100 = Decimal(str(it.get('price_per_100g')))
+                    line_total = (price100 * Decimal(qty)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                elif it.get('price') is not None:
+                    line_total = (Decimal(str(it.get('price'))) * Decimal(qty)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                else:
+                    line_total = Decimal('0.00')
+        except Exception:
+            line_total = Decimal('0.00')
+
+        # accumulate totals by currency
+        totals_decimal.setdefault(currency, Decimal('0.00'))
+        totals_decimal[currency] += line_total
+
+        # prepare cart item for template: price shown is line total
+        cart_for_template[str(pid)] = {
+            'name': it.get('name', ''),
+            'image': it.get('image', ''),
+            'price': "{:.2f}".format(line_total),   # line total formatted as string
+            'currency': currency,
+            'quantity': qty,
+        }
+
+        if first_pid is None:
+            first_pid = pid
+
+    # format totals for template
+    totals_str = {cur: "{:.2f}".format(amount) for cur, amount in totals_decimal.items()}
+
+    # recommended products for bottom section (simple sample — choose some DB products)
     try:
-        recommended = SeafoodProduct.objects.all()[:6]
+        recommended = list(SeafoodProduct.objects.all()[:8])
     except Exception:
         recommended = []
 
-    first_pid = None
-    for k in cart.keys():
-        first_pid = k
-        break
-
-    return render(request, 'cart.html', {
-        'cart': cart,
-        'totals': totals,
-        'cart_count': cart_count(request),
-        'products': recommended,
+    context = {
+        'cart': cart_for_template,
+        'totals': totals_str,
         'first_pid': first_pid,
-    })
+        'cart_count': cart_count_total,
+        'products': recommended,
+    }
+    return render(request, 'cart.html', context)
 
 
 @require_POST
@@ -1137,10 +1363,13 @@ def chat_view(request, conv_id):
 def submit_order(request):
     """
     Створює замовлення. Підтримує багатопозиційний кошик у session['cart'].
-    Формат cart: dict { pid: {name, price, currency, quantity, image} }
-    price — ціна за 100г (як у add_to_cart), quantity — кількість одиниць (кількість "100г" блочків).
+    Коректно обробляє кілька форматів збереження елементів корзини:
+      - package items: {'unit':'package', 'total_price', 'unit_price_per_100g', 'package_size_grams', 'quantity'}
+      - unit items: {'price_per_100g' or 'price', 'quantity'}
     """
     from django.contrib.auth import get_user_model
+    from decimal import Decimal, ROUND_HALF_UP
+    import traceback
 
     # Read cart from session
     cart = request.session.get('cart', {}) or {}
@@ -1165,8 +1394,6 @@ def submit_order(request):
 
     # Basic validation
     if not (delivery_type and postal and region and city and branch and first_name and last_name and middle_name and email and phone):
-        # If cart present, we will re-render checkout form; otherwise fallback to order_form product
-        # Try to show the relevant product again if provided
         product_id = int(request.POST.get('product_id') or 0)
         product_obj, _ = _product_from_db_or_sample(product_id) if product_id else (None, None)
         return render(request, 'order_form.html', {
@@ -1179,7 +1406,7 @@ def submit_order(request):
         payment_method = 'card'
 
     # Build items list either from cart or from POST product_id (fallback to single product)
-    items_data = []  # each item: dict with keys product_obj (db), name, unit_price (Decimal), qty_units (int)
+    items_data = []  # each item: dict with keys product_obj (db), name, unit_price (Decimal per 100g), qty_units (int number of 100g units), line_total (Decimal), pid
     total_price = Decimal('0.00')
     total_qty_grams = 0
 
@@ -1190,25 +1417,78 @@ def submit_order(request):
                 pid = int(pid_str)
             except Exception:
                 continue
+
             # Try to use DB product if exists
             db_prod = SeafoodProduct.objects.filter(pk=pid).first()
-            # unit price stored in cart is numeric (price per 100g)
+
+            # Normalize quantity and compute line total depending on structure
             try:
-                unit_price = Decimal(str(it.get('price', '0')))
+                qty = int(it.get('quantity', 1))
             except Exception:
-                unit_price = Decimal('0')
+                qty = 1
+
+            # Default values
+            unit_price_per_100g = Decimal('0.00')  # price per 100g
+            line_total = Decimal('0.00')
+            qty_units = 0
             try:
-                qty_units = int(it.get('quantity', 1))
+                if it.get('unit') == 'package':
+                    # package: quantity = number of packages
+                    pkg_size = int(it.get('package_size_grams') or 0)
+                    # If total_price stored, prefer it
+                    tp = it.get('total_price')
+                    if tp:
+                        # total_price likely string
+                        line_total = Decimal(str(tp))
+                        # compute unit_price_per_100g for record (if present)
+                        try:
+                            unit_price_per_100g = Decimal(str(it.get('unit_price_per_100g', '0')))
+                        except Exception:
+                            unit_price_per_100g = Decimal('0.00')
+                    else:
+                        # compute from unit_price_per_100g and pkg_size
+                        unit_price_per_100g = Decimal(str(it.get('unit_price_per_100g', '0')))
+                        total_grams = pkg_size * qty
+                        line_total = (unit_price_per_100g * (Decimal(total_grams) / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    # qty_units = total number of 100g units represented by these packages
+                    qty_units = (pkg_size * qty) // 100 if pkg_size else qty
+                    total_qty_grams += pkg_size * qty if pkg_size else qty_units * 100
+                else:
+                    # unit items: assume quantity counts 100g-units or simple units depending on stored fields
+                    # prefer explicit price_per_100g
+                    if it.get('price_per_100g') is not None:
+                        unit_price_per_100g = Decimal(str(it.get('price_per_100g')))
+                        qty_units = qty
+                        line_total = (unit_price_per_100g * Decimal(qty_units)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                        total_qty_grams += qty_units * 100
+                    elif it.get('unit_price_per_100g') is not None:
+                        unit_price_per_100g = Decimal(str(it.get('unit_price_per_100g')))
+                        qty_units = qty
+                        line_total = (unit_price_per_100g * Decimal(qty_units)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                        total_qty_grams += qty_units * 100
+                    elif it.get('price') is not None:
+                        # legacy: price field may be price per 100g or per unit — assume per 100g to keep compatibility
+                        unit_price_per_100g = Decimal(str(it.get('price')))
+                        qty_units = qty
+                        line_total = (unit_price_per_100g * Decimal(qty_units)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                        total_qty_grams += qty_units * 100
+                    else:
+                        # unknown structure -> skip
+                        unit_price_per_100g = Decimal('0.00')
+                        qty_units = qty
+                        line_total = Decimal('0.00')
+                        total_qty_grams += qty_units * 100
             except Exception:
-                qty_units = 1
-            line_total = unit_price * Decimal(qty_units)   # price per 100g * number of 100g units
+                # fallback defaults if any conversion fails
+                line_total = Decimal('0.00')
+
             total_price += line_total
-            total_qty_grams += qty_units * 100
+
             items_data.append({
                 'product_obj': db_prod,
                 'name': it.get('name') or (db_prod.name if db_prod else 'Товар'),
-                'unit_price': unit_price,
-                'qty_units': qty_units,
+                'unit_price': unit_price_per_100g,
+                'qty_units': qty_units or qty,
                 'line_total': line_total,
                 'pid': pid,
             })
@@ -1228,7 +1508,7 @@ def submit_order(request):
         else:
             qty_units = max(1, qty)
         unit_price = Decimal(str(product_obj.price_per_100g))
-        line_total = (Decimal(qty) / Decimal(100)) * unit_price if qty >= 10 else unit_price * Decimal(qty_units)
+        line_total = (Decimal(qty) / Decimal(100) * unit_price).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) if qty >= 10 else (unit_price * Decimal(qty_units)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         total_price = line_total
         total_qty_grams = qty if isinstance(qty, int) else qty_units * 100
         # Ensure db_prod exists
@@ -1270,7 +1550,6 @@ def submit_order(request):
         prod_obj = it.get('product_obj')
         # if product not in DB, create a DB record
         if prod_obj is None:
-            # create minimal DB product from name & price
             try:
                 prod_obj = SeafoodProduct.objects.create(
                     name=it.get('name') or 'Товар',
@@ -1286,7 +1565,7 @@ def submit_order(request):
             product=prod_obj,
             quantity_g=qty_g,
             unit_price=it.get('unit_price', Decimal('0.00')),
-            # total_price will be set by OrderItem.save()
+            # total_price will be set by OrderItem.save() / order.recalc_totals()
         )
 
     # Recalculate totals to ensure consistency
@@ -1298,7 +1577,7 @@ def submit_order(request):
         order.quantity_g = total_qty_grams
         order.save(update_fields=['total_price', 'quantity_g'])
 
-    # ensure seller user exists and create conversation
+    # create seller user and conversation, messages, etc (keeps your existing logic)
     try:
         User = get_user_model()
         seller = User.objects.filter(username='VugriUa').first()
@@ -1382,6 +1661,7 @@ def submit_order(request):
             pass
 
     return redirect('order_complete', order_id=order.id)
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 
@@ -1470,49 +1750,106 @@ def toggle_availability(request, product_id):
 
 @require_POST
 def add_to_cart(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({
-            'ok': False,
-            'error': 'login required',
-            'login_url': reverse('login') + '?next=' + request.path
-        }, status=401)
-
-    product_id = request.POST.get('product_id')
-    if not product_id:
-        return JsonResponse({'ok': False, 'error': 'product_id required'}, status=400)
-
-    product = get_object_or_404(SeafoodProduct, pk=int(product_id))
-
-    # <-- SERVER-SIDE AVAILABILITY CHECK -->
-    if not product.in_stock:
-        return JsonResponse({'ok': False, 'error': 'Товар тимчасово відсутній', 'in_stock': False}, status=400)
-    # <-- end check -->
-
-    # ... ваша існуюча логіка для name/price/quantity/image/додавання в сесію ...
-    name = request.POST.get('name', product.name or 'Товар')
     try:
-        client_price = request.POST.get('price')
-        price = int(float(client_price)) if client_price else int(float(product.price_per_100g or 0))
-    except Exception:
-        price = int(float(product.price_per_100g or 0))
+        if not request.user.is_authenticated:
+            return JsonResponse({
+                'ok': False,
+                'error': 'login required',
+                'login_url': reverse('login') + '?next=' + request.path
+            }, status=401)
 
-    currency = request.POST.get('currency', 'UAH')
-    try:
-        q = int(float(request.POST.get('quantity', '1')))
-    except Exception:
-        q = 1
-    quantity = max(1, q if not (q >= 10 and q % 100 == 0) else q // 100)
-    image = request.POST.get('image', '')
+        product_id = request.POST.get('product_id')
+        if not product_id:
+            return JsonResponse({'ok': False, 'error': 'product_id required'}, status=400)
 
-    cart = _get_cart(request)  # ваш хелпер
-    pid = str(product.id)
-    if pid in cart:
-        cart[pid]['quantity'] = int(cart[pid].get('quantity', 0)) + quantity
-    else:
-        cart[pid] = {'name': name, 'price': price, 'currency': currency, 'quantity': quantity, 'image': image}
+        product = get_object_or_404(SeafoodProduct, pk=int(product_id))
 
-    request.session.modified = True
-    return JsonResponse({'ok': True, 'cart_count': cart_count(request)})
+        # SERVER-SIDE AVAILABILITY CHECK
+        if not product.in_stock:
+            return JsonResponse({'ok': False, 'error': 'Товар тимчасово відсутній', 'in_stock': False}, status=400)
+
+        # name (client may send, but fallback to DB)
+        name = request.POST.get('name', product.name or 'Товар')
+
+        # price_per_100g as Decimal (use product DB value; do not trust client price)
+        try:
+            price_per_100g = Decimal(str(product.price_per_100g)) if product.price_per_100g is not None else Decimal('0.00')
+        except Exception:
+            price_per_100g = Decimal('0.00')
+
+        currency = request.POST.get('currency', 'UAH')
+
+        try:
+            q = int(float(request.POST.get('quantity', '1')))
+        except Exception:
+            q = 1
+        quantity = max(1, q)
+
+        image = request.POST.get('image', '')
+
+        cart = _get_cart(request)  # ваш хелпер для сесійної корзини
+        pid = str(product.id)
+
+        # If product sold in packages
+        if getattr(product, 'package_size_grams', None):
+            package_size = int(product.package_size_grams)
+            total_grams = package_size * quantity
+            total_price = (price_per_100g * (Decimal(total_grams) / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+            item = {
+                'name': name,
+                'currency': currency,
+                'unit': 'package',
+                'package_size_grams': package_size,
+                'quantity': quantity,               # number of packages
+                'total_grams': total_grams,
+                'unit_price_per_100g': str(price_per_100g),
+                'total_price': str(total_price),
+                'image': image,
+            }
+
+            if pid in cart:
+                existing = cart[pid]
+                existing_qty = int(existing.get('quantity', 0)) + quantity
+                existing_total_grams = package_size * existing_qty
+                existing_total_price = (price_per_100g * (Decimal(existing_total_grams) / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                existing.update({
+                    'quantity': existing_qty,
+                    'total_grams': existing_total_grams,
+                    'total_price': str(existing_total_price),
+                })
+                cart[pid] = existing
+            else:
+                cart[pid] = item
+
+        else:
+            # standard item (quantity = units)
+            unit_price = price_per_100g.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            if pid in cart:
+                cart[pid]['quantity'] = int(cart[pid].get('quantity', 0)) + quantity
+            else:
+                cart[pid] = {
+                    'name': name,
+                    'price_per_100g': str(unit_price),
+                    'currency': currency,
+                    'unit': 'unit',
+                    'quantity': quantity,
+                    'image': image
+                }
+
+        request.session.modified = True
+        return JsonResponse({'ok': True, 'cart_count': cart_count(request)})
+
+    except Exception as e:
+        # Лог у консоль/термінал для діагностики
+        import traceback
+        traceback.print_exc()
+        # Повертаємо JSON з повідомленням (у DEBUG можна додати e)
+        from django.conf import settings
+        resp = {'ok': False, 'error': 'internal server error'}
+        if settings.DEBUG:
+            resp['debug'] = str(e)
+        return JsonResponse(resp, status=500)
 
 from django.views.decorators.http import require_POST
 from django.contrib.auth import get_user_model
@@ -1547,6 +1884,7 @@ def close_order(request, conv_id):
 
 @login_required
 def archived_conversations(request):
+
     """
     Показує архівні розмови (order.status == 'closed').
     - staff бачить всі archived conversations
@@ -1559,3 +1897,39 @@ def archived_conversations(request):
         qs = Conversation.objects.filter(participants=request.user, order__status='closed').select_related('order').prefetch_related('participants').order_by('-created_at')
 
     return render(request, 'conversations_list.html', {'conversations': qs, 'title': 'Архів чатів'})
+
+@require_POST
+@login_required
+def delete_review(request, review_id):
+
+    """
+    Дозволяє видаляти Review лише користувачу з username == 'VugriUa'.
+    Працює для звичайного POST (редірект назад на сторінку товару) і для AJAX (повертає JSON).
+    """
+    # Only the specific account is allowed
+    if request.user.username != 'VugriUa':
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'error': 'forbidden'}, status=403)
+        return HttpResponseForbidden("Only VugriUa can delete reviews")
+
+    review = get_object_or_404(Review, pk=review_id)
+    product_id = review.product_id
+    review.delete()
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'review_id': review_id})
+    # redirect back to product page
+    return redirect('product_details', product_id=product_id)
+
+def debug_session_cart(request):
+    """
+    Dev helper: повертає всі ключі сесії і значення cart (якщо є).
+    Видалити після діагностики.
+    """
+    # Обережно — тут повертається весь вміст сесії. Використовувати лише у dev.
+    data = {k: request.session.get(k) for k in request.session.keys()}
+    return JsonResponse({
+        'session_keys': list(request.session.keys()),
+        'cart': request.session.get('cart'),
+        'full': data
+    }, json_dumps_params={'ensure_ascii': False})
