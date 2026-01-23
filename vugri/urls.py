@@ -1,4 +1,3 @@
-# E:\soft\vugri\vugri\urls.py
 from django.contrib import admin
 from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
@@ -68,7 +67,6 @@ urlpatterns = [
     path('conversations/archived/', seafood_views.archived_conversations, name='archived_conversations'),
     path('review/<int:review_id>/delete/', seafood_views.delete_review, name='delete_review'),
     path('debug/session-cart/', seafood_views.debug_session_cart, name='debug_session_cart'),
-
 ]
 
 # Password change (user must be logged in)
@@ -126,6 +124,7 @@ urlpatterns += [
     ),
 ]
 
-# Serve media files in development (only when DEBUG=True)
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve media files (temporary)
+# NOTE: serving media from Django in production is NOT recommended long-term.
+# This is a temporary convenience so uploaded images are accessible until you set up S3 or a persistent disk.
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
