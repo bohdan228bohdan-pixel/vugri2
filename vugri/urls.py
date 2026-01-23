@@ -124,7 +124,7 @@ urlpatterns += [
     ),
 ]
 
-# Serve media files (temporary)
-# NOTE: serving media from Django in production is NOT recommended long-term.
-# This is a temporary convenience so uploaded images are accessible until you set up S3 or a persistent disk.
+# Temporarily serve media files in production for debugging.
+# NOTE: This is a temporary convenience only. Do NOT rely on Django to serve media long-term in production.
+# Remove this once you have S3 or a persistent disk + proper static hosting.
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
