@@ -1,0 +1,17 @@
+Use Python 3.12 on Render to ensure binary wheels for Pillow
+
+# Conflicts:
+#	runtime.txt
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# interactive rebase in progress; onto 05ce5cd
+# Last command done (1 command done):
+#    pick 8452a89 # Use Python 3.12 on Render to ensure binary wheels for Pillow
+# No commands remaining.
+# You are currently rebasing branch 'main' on '05ce5cd'.
+#
+# Changes to be committed:
+#	modified:   runtime.txt
+#
