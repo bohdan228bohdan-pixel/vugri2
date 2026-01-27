@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path, reverse_lazy
+from django.urls import re_path, path, reverse_lazy
 from django.contrib.auth import views as auth_views
 from django.views.static import serve
 
