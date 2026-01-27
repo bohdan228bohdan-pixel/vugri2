@@ -1669,8 +1669,14 @@ from django.contrib.admin.views.decorators import staff_member_required
 def my_conversations(request):
     """
     Показує список розмов, в яких учасник — поточний користувач.
+    Не показує розмови, пов'язані з ордерами зі статусом 'closed'.
     """
-    qs = Conversation.objects.filter(participants=request.user).select_related('order').prefetch_related('participants').order_by('-created_at')
+    qs = (Conversation.objects
+          .filter(participants=request.user)
+          .exclude(order__status='closed')            # <-- виключаємо закриті ордери
+          .select_related('order')
+          .prefetch_related('participants')
+          .order_by('-created_at'))
     return render(request, 'conversations_list.html', {'conversations': qs, 'title': 'Мої чати'})
 
 
@@ -1678,8 +1684,13 @@ def my_conversations(request):
 def all_conversations(request):
     """
     Показує всі розмови для продавця/staff.
+    Не показує розмови з ордерами, що мають status == 'closed'.
     """
-    qs = Conversation.objects.select_related('order').prefetch_related('participants').order_by('-created_at')
+    qs = (Conversation.objects
+          .exclude(order__status='closed')            # <-- виключаємо закриті ордери
+          .select_related('order')
+          .prefetch_related('participants')
+          .order_by('-created_at'))
     return render(request, 'conversations_list.html', {'conversations': qs, 'title': 'Всі чати (для продавця)'})
 
 @staff_member_required
