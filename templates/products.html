@@ -148,17 +148,39 @@
       <div class="card-body">
         <h3 id="p-{{ p.id }}" class="product-title">{{ p.name }}</h3>
         <div class="product-meta">{{ p.description|default:'' }}</div>
+
         <div class="price">
-  {% if p.package_price_display %}
-    <strong>1 шт — {{ p.package_price_display }} грн</strong>
-  {% else %}
-    {% if p.price_per_100g %}
-      <strong>{{ p.price_per_100g|floatformat:2 }} грн / 100г</strong>
-    {% else %}
-      <span>Ціна уточнюється</span>
-    {% endif %}
-  {% endif %}
-</div>
+          {# Special-case: only for product id==12 show "<package_price> грн / <package_size> г" #}
+          {% if p.id == 12 %}
+            {% if p.package_price_display %}
+              {% if p.package_size_grams %}
+                <strong>{{ p.package_price_display }} грн / {{ p.package_size_grams }} г</strong>
+              {% elif p.package_size %}
+                <strong>{{ p.package_price_display }} грн / {{ p.package_size }} г</strong>
+              {% else %}
+                <strong>{{ p.package_price_display }} грн</strong>
+              {% endif %}
+            {% else %}
+              {% if p.price_per_100g %}
+                <strong>{{ p.price_per_100g|floatformat:2 }} грн / 100г</strong>
+              {% else %}
+                <span>Ціна уточнюється</span>
+              {% endif %}
+            {% endif %}
+          {% else %}
+            {# Default behavior for other products (unchanged) #}
+            {% if p.package_price_display %}
+              <strong>1 шт — {{ p.package_price_display }} грн</strong>
+            {% else %}
+              {% if p.price_per_100g %}
+                <strong>{{ p.price_per_100g|floatformat:2 }} грн / 100г</strong>
+              {% else %}
+                <span>Ціна уточнюється</span>
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        </div>
+
       </div>
 
       <div class="product-actions">
