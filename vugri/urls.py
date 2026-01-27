@@ -68,7 +68,7 @@ urlpatterns = [
     path('conversations/archived/', seafood_views.archived_conversations, name='archived_conversations'),
     path('review/<int:review_id>/delete/', seafood_views.delete_review, name='delete_review'),
     path('debug/session-cart/', seafood_views.debug_session_cart, name='debug_session_cart'),
-    
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
 ]
 
 # Password change (user must be logged in)
