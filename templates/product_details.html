@@ -190,20 +190,22 @@
           <div class="product-meta">{{ product.description }}</div>
 
 <div class="price">
-  {% comment %}
-    Якщо view передав package_price (рядок, наприклад "2800.00") — показуємо його як ціну за один екземпляр (1 шт).
-    Інакше — показуємо стандартну ціну за 100г.
-  {% endcomment %}
-
   {% if package_price %}
-    <strong style="font-size:28px;color:#fff">{{ package_price }} грн</strong>
-    <span style="color:var(--muted)"> / 1 шт</span>
+    {# Для сторінки товару view може передавати package_price/package_size або атрибути product.package_size_grams #}
+    {% if package_size %}
+      <strong>{{ package_price }} грн / {{ package_size }} г</strong>
+    {% elif product.package_size_grams %}
+      <strong>{{ product.compute_package_price|default:product.package_price_display }} грн / {{ product.package_size_grams }} г</strong>
+    {% elif product.package_size %}
+      <strong>{{ product.package_price_display }} грн / {{ product.package_size }} г</strong>
+    {% else %}
+      <strong>1 шт — {{ package_price|default:product.package_price_display }}</strong>
+    {% endif %}
   {% else %}
     {% if product.price_per_100g %}
-      <strong style="font-size:28px;color:#fff">{{ product.price_per_100g|floatformat:2 }} грн</strong>
-      <span style="color:var(--muted)"> / 100г</span>
+      <strong>{{ product.price_per_100g|floatformat:2 }} грн / 100г</strong>
     {% else %}
-      <span style="color:var(--muted)">Ціна уточнюється</span>
+      <span>Ціна уточнюється</span>
     {% endif %}
   {% endif %}
 </div>
