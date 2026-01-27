@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
+from django.views.static import serve
 
 from seafood import views as seafood_views
 
