@@ -1,0 +1,34 @@
+{# Универсальний фрагмент для відображення ціни продукту.
+   Використовувати як include з контекстом p або product. #}
+{% comment %}Перемінна може бути p або product залежно від шаблону{% endcomment %}
+{% with obj=p|default:product %}
+  <div class="price">
+    {# 1) Якщо продано в одиницях #}
+    {% if obj.sold_in_units %}
+      {% if obj.price_per_unit %}
+        {# показуємо наприклад: "120.00 грн / 1 шт" #}
+        <strong>{{ obj.price_per_unit|floatformat:2 }} грн / 1 {{ obj.unit_label|default:"шт" }}</strong>
+      {% else %}
+        <span>Ціна уточнюється</span>
+      {% endif %}
+
+    {# 2) Якщо є пакетна ціна (приклад: 300г/500г) #}
+    {% elif obj.package_price_display %}
+      {% if obj.package_size_grams %}
+        <strong>{{ obj.package_price_display }} грн / {{ obj.package_size_grams }} г</strong>
+      {% elif obj.package_size %}
+        <strong>{{ obj.package_price_display }} грн / {{ obj.package_size }} г</strong>
+      {% else %}
+        <strong>1 шт — {{ obj.package_price_display }} грн</strong>
+      {% endif %}
+
+    {# 3) Інакше — ціна за 100г (як і було) #}
+    {% else %}
+      {% if obj.price_per_100g %}
+        <strong>{{ obj.price_per_100g|floatformat:2 }} грн / 100г</strong>
+      {% else %}
+        <span>Ціна уточнюється</span>
+      {% endif %}
+    {% endif %}
+  </div>
+{% endwith %}
