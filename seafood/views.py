@@ -755,48 +755,104 @@ def add_to_cart(request):
     if not product.in_stock:
         return JsonResponse({'ok': False, 'error': 'Товар тимчасово відсутній', 'in_stock': False}, status=400)
 
-    # client-provided metadata (fallbacks)
+    # basic metadata
     name = request.POST.get('name', product.name or 'Товар')
-    try:
-        # prefer product.price_per_100g if client didn't provide a valid price
-        client_price = request.POST.get('price', None)
-        if client_price is None or client_price == '':
-            price = int(float(product.price_per_100g or 0))
-        else:
-            price = int(float(client_price))
-    except (TypeError, ValueError):
-        price = int(float(product.price_per_100g or 0))
-
     currency = request.POST.get('currency', 'UAH')
-
-    raw_q = request.POST.get('quantity', '1')
-    try:
-        q = int(float(raw_q))
-    except (TypeError, ValueError):
-        q = 1
-
-    if q >= 10 and q % 100 == 0:
-        quantity = max(1, q // 100)
-    else:
-        quantity = max(1, q)
-
     image = request.POST.get('image', '')
 
     # get or create cart (keeps existing helper)
     cart = _get_cart(request)
 
-    # use string key for session-stored product id to be consistent
-    pid_key = str(product.id)
-    if pid_key in cart:
-        cart[pid_key]['quantity'] = int(cart[pid_key].get('quantity', 0)) + quantity
+    # If product is sold in units (шт, банка etc.) — use units logic
+    if getattr(product, 'sold_in_units', False):
+        # quantity (units) — try 'quantity' then 'quantity_units'
+        raw_qty = request.POST.get('quantity', request.POST.get('quantity_units', '1'))
+        try:
+            qty = int(float(raw_qty))
+        except (TypeError, ValueError):
+            qty = 1
+        qty = max(1, qty)
+
+        # price per unit must exist (validation), fallback to 0.00 if not
+        price_per_unit = getattr(product, 'price_per_unit', None) or Decimal('0.00')
+        if not isinstance(price_per_unit, Decimal):
+            price_per_unit = Decimal(str(price_per_unit))
+
+        total_price = (price_per_unit * Decimal(qty)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        # use unit-specific session key to avoid colliding with gram-based items
+        pid_key = f"u:{product.id}"
+        if pid_key in cart:
+            # accumulate quantity and total
+            existing = cart[pid_key]
+            existing_qty = int(existing.get('quantity', 0))
+            new_qty = existing_qty + qty
+            existing['quantity'] = new_qty
+            existing_total = Decimal(str(existing.get('total_price', '0') or '0'))
+            existing_total += (price_per_unit * Decimal(qty))
+            existing['total_price'] = str(existing_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+        else:
+            cart[pid_key] = {
+                'product_id': product.id,
+                'name': name,
+                'type': 'unit',
+                'quantity': qty,
+                'unit_label': getattr(product, 'unit_label', 'шт') or 'шт',
+                'price_per_unit': str(price_per_unit.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
+                'total_price': str(total_price),
+                'currency': currency,
+                'image': image,
+            }
+
     else:
-        cart[pid_key] = {
-            'name': name,
-            'price': price,
-            'currency': currency,
-            'quantity': quantity,
-            'image': image,
-        }
+        # Weight-based logic (backwards-compatible with previous behavior)
+        # Accept either 'quantity_g' (grams) or 'quantity' (legacy which might be grams or 100g units)
+        raw_q = request.POST.get('quantity_g', request.POST.get('quantity', '1'))
+        try:
+            q = int(float(raw_q))
+        except (TypeError, ValueError):
+            q = 1
+
+        # previous logic interpreted values >=10 and divisible by 100 as grams,
+        # then converted to number of 100g units. Preserve that behavior:
+        if q >= 10 and q % 100 == 0:
+            # treat q as grams, convert to number of 100g units
+            num_100g_units = max(1, q // 100)
+        else:
+            # treat q as already number of 100g units
+            num_100g_units = max(1, q)
+
+        # price per 100g (fallback to 0.00)
+        price_per_100g = getattr(product, 'price_per_100g', None) or Decimal('0.00')
+        if not isinstance(price_per_100g, Decimal):
+            price_per_100g = Decimal(str(price_per_100g))
+
+        # compute total: price_per_100g * number_of_100g_units
+        total_price = (price_per_100g * Decimal(num_100g_units)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        # create key includes grams info to differentiate different package sizes if needed
+        pid_key = f"g:{product.id}:{num_100g_units}"
+        if pid_key in cart:
+            existing = cart[pid_key]
+            existing_qty = int(existing.get('quantity', 0))
+            new_qty = existing_qty + num_100g_units
+            existing['quantity'] = new_qty
+            existing_total = Decimal(str(existing.get('total_price', '0') or '0'))
+            existing_total += (price_per_100g * Decimal(num_100g_units))
+            existing['total_price'] = str(existing_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+        else:
+            cart[pid_key] = {
+                'product_id': product.id,
+                'name': name,
+                'type': 'weight',
+                'quantity': num_100g_units,  # number of 100g units
+                'grams_per_unit': 100,
+                'price_per_100g': str(price_per_100g.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
+                'total_price': str(total_price),
+                'currency': currency,
+                'image': image,
+            }
+
     request.session.modified = True
 
     return JsonResponse({'ok': True, 'cart_count': cart_count(request)})
