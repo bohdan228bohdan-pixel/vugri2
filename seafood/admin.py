@@ -25,8 +25,8 @@ class ProductImageInline(admin.TabularInline):
 @admin.register(SeafoodProduct)
 class SeafoodProductAdmin(admin.ModelAdmin):
     # Показуємо категорії через helper (щоб відображати M2M у списку)
-    list_display = ('id', 'name', 'categories_list', 'price_per_100g', 'in_stock', 'package_size_grams', 'youtube_preview_short')
-    list_editable = ('in_stock',)
+    list_display = ('id', 'name', 'categories_list', 'price_per_100g', 'price_per_unit', 'sold_in_units', 'in_stock', 'package_size_grams', 'youtube_preview_short')
+    list_editable = ('in_stock', 'sold_in_units')
     inlines = [ProductImageInline]
 
     # У формі редагування даємо можливість вибрати кілька категорій
@@ -34,12 +34,15 @@ class SeafoodProductAdmin(admin.ModelAdmin):
         'name',
         'description',
         'price_per_100g',
+        'price_per_unit',        # <- додано
+        'unit_label',            # <- додано
         'package_size_grams',
         'image',
         'youtube_url',
         'youtube_preview',
         'categories',   # M2M поле
         'category',     # legacy FK (залишено для плавного переходу)
+        'sold_in_units', # <- додано
         'in_stock',
     )
     readonly_fields = ('youtube_preview',)
