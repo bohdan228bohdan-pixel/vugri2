@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
 from django.utils.safestring import mark_safe
+from django import forms
+from django.core.exceptions import ValidationError
 import re
 
 from .models import (
@@ -22,32 +24,77 @@ class ProductImageInline(admin.TabularInline):
     fields = ('image', 'alt', 'is_main')
 
 
+class SeafoodProductForm(forms.ModelForm):
+    """
+    Custom ModelForm to validate that when sold_in_units=True the price_per_unit is provided.
+    Also exposes the admin JS via Media to toggle fields visibility.
+    """
+    class Meta:
+        model = SeafoodProduct
+        fields = '__all__'
+
+    class Media:
+        # This JS file should be placed at static/admin/js/seafood_product_toggle.js
+        js = ('admin/js/seafood_product_toggle.js',)
+
+    def clean(self):
+        cleaned = super().clean()
+        sold = cleaned.get('sold_in_units')
+        price_unit = cleaned.get('price_per_unit')
+        pkg = cleaned.get('package_size_grams')
+        price100 = cleaned.get('price_per_100g')
+
+        if sold:
+            # If selling in units, price_per_unit must be set and grams/package fields ignored
+            if not price_unit:
+                raise ValidationError("Якщо товар продається в одиницях (sold_in_units=True), вкажіть 'price_per_unit'.")
+            # Ensure package_size_grams doesn't conflict (optional: clear or warn)
+        else:
+            # If not sold in units, ensure either price_per_100g or package_size_grams is present (optional)
+            if not price100 and not pkg:
+                # Not strictly required, just a helpful warning - don't block save necessarily.
+                pass
+
+        return cleaned
+
+
 @admin.register(SeafoodProduct)
 class SeafoodProductAdmin(admin.ModelAdmin):
-    # Показуємо категорії через helper (щоб відображати M2M у списку)
-    list_display = ('id', 'name', 'categories_list', 'price_per_100g', 'price_per_unit', 'sold_in_units', 'in_stock', 'package_size_grams', 'youtube_preview_short')
+    # Show categories and new unit fields in list
+    list_display = (
+        'id',
+        'name',
+        'categories_list',
+        'price_per_100g',
+        'price_per_unit',
+        'sold_in_units',
+        'in_stock',
+        'package_size_grams',
+        'youtube_preview_short'
+    )
     list_editable = ('in_stock', 'sold_in_units')
     inlines = [ProductImageInline]
+    form = SeafoodProductForm
 
-    # У формі редагування даємо можливість вибрати кілька категорій
+    # In the edit form show fields with unit-related fields grouped
     fields = (
         'name',
         'description',
         'price_per_100g',
-        'price_per_unit',        # <- додано
-        'unit_label',            # <- додано
+        'price_per_unit',
+        'unit_label',
         'package_size_grams',
         'image',
         'youtube_url',
         'youtube_preview',
         'categories',   # M2M поле
         'category',     # legacy FK (залишено для плавного переходу)
-        'sold_in_units', # <- додано
+        'sold_in_units',
         'in_stock',
     )
     readonly_fields = ('youtube_preview',)
 
-    # Зручний віджет у адмінці для many-to-many
+    # Friendly many-to-many widget
     filter_horizontal = ('categories',)
 
     def categories_list(self, obj):
