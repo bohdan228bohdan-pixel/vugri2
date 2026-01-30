@@ -5,8 +5,7 @@
 
 {% block head_extra %}
 <style>
-/* Dark homepage tweaks — робимо сайт дійсно темним, як на скрині */
-:root {
+:root{
   --page-bg: #050505;
   --panel-bg: rgba(255,255,255,0.02);
   --muted-2: #9aa0a6;
@@ -16,252 +15,156 @@
   --brand-accent: rgba(255,255,255,0.06);
 }
 
-body { background: var(--page-bg); }
-
-/* HERO / banner */
-.hero {
-  position: relative;
-  min-height: 560px;
-  background-size: cover;
-  background-position: center;
-  display:flex;
-  align-items:center;
-  color: #ffffff;
-  overflow:hidden;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+html,body{height:100%;margin:0;}
+body{
+  font-family: Inter, Roboto, Arial, sans-serif;
+  background:var(--page-bg);
+  color:var(--muted-2);
+  -webkit-font-smoothing:antialiased;
 }
+a{color:inherit;text-decoration:none;}
+img{display:block;max-width:100%;height:auto;}
 
-/* subtle dark overlay */
-.hero::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background: linear-gradient(90deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.62) 35%, rgba(0,0,0,0.28) 65%, rgba(0,0,0,0.06) 100%);
-  z-index:1;
-  pointer-events:none;
-}
+/* Layout */
+.site-inner{max-width:1200px;margin:0 auto;padding:0 16px;box-sizing:border-box;}
+header.site-header{position:sticky;top:0;z-index:1400;background:linear-gradient(180deg,#050505,#0b0b0c);border-bottom:1px solid rgba(255,255,255,0.03);}
 
-.hero-inner {
+/* HERO */
+.hero{
   position:relative;
-  z-index:2;
-  max-width:1280px;
-  margin:0 auto;
-  padding:64px 24px;
-  display:flex;
-  gap:36px;
-  align-items:center;
-  box-sizing:border-box;
-}
-
-/* Brand block (moved to top center of hero so it doesn't overlap product card)
-   and decorative "Міністерство Вугрів" title */
-.hero-brand {
-  position: absolute;
-  top: 18px;
-  left: 50%;
-  transform: translateX(-50%);
+  min-height:560px;
+  background-size:cover;
+  background-position:center;
   display:flex;
   align-items:center;
-  gap:12px;
-  z-index: 3;
-  pointer-events: none; /* decorative */
-}
-.hero-brand img { height:46px; display:block; pointer-events:auto; }
-.hero-brand .brand-text {
-  font-weight:900;
   color:#fff;
-  font-size:18px;
-  letter-spacing:1px;
-  text-shadow: 0 6px 20px rgba(0,0,0,0.6);
-  background: rgba(0,0,0,0.18);
-  padding:6px 10px;
-  border-radius:8px;
-  pointer-events:auto;
+  overflow:hidden;
+  border-bottom:1px solid rgba(255,255,255,0.03);
 }
-
-/* left column */
-.hero-left { flex:1; max-width:720px; position:relative; z-index:2; }
-.hero-left .logo { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
-
-/* Decorative ministry title (large & elegant, behind content slightly) */
-.ministry-title {
-  font-family: "Georgia", serif;
-  font-weight:900;
-  font-size:36px;
-  color: rgba(255,255,255,0.06);
-  position:absolute;
-  right: -10px;
-  top: 18px;
-  transform: rotate(-6deg);
-  z-index:1;
-  pointer-events:none;
-  letter-spacing:2px;
+.hero::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.62) 35%, rgba(0,0,0,0.28) 65%, rgba(0,0,0,0.06) 100%);
+  z-index:1;pointer-events:none;
 }
+.hero-inner{position:relative;z-index:2;max-width:1280px;margin:0 auto;padding:64px 24px;display:flex;gap:36px;align-items:center;box-sizing:border-box;}
+.hero-brand{position:absolute;top:18px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;z-index:3;pointer-events:none;}
+.hero-brand .brand-text{font-weight:900;color:#fff;font-size:18px;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,0.18);pointer-events:auto;text-shadow:0 6px 20px rgba(0,0,0,0.6);}
 
-/* main headline / content */
-.hero-left h1 {
-  margin:0 0 12px;
-  font-size:48px;
-  line-height:1.05;
-  font-weight:900;
-  letter-spacing:1.2px;
-  color: #fff;
-  position:relative;
-  z-index:2;
-}
-.hero-left p.lead {
-  margin:0 0 18px;
-  color: var(--muted-2);
-  font-size:18px;
-  max-width:680px;
-  position:relative;
-  z-index:2;
-}
+/* Left */
+.hero-left{flex:1;max-width:720px;position:relative;z-index:2;}
+.hero-left h1{margin:0 0 12px;font-size:48px;line-height:1.05;font-weight:900;color:#fff;}
+.hero-left p.lead{margin:0 0 18px;color:var(--muted-2);font-size:18px;max-width:680px;}
 
-/* CTA buttons */
-.cta-row { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; }
-.btn {
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:12px 18px;
-  border-radius:10px;
-  font-weight:800;
-  text-decoration:none;
-  cursor:pointer;
-}
-.btn-primary { background: linear-gradient(90deg,var(--accent),var(--accent-dark)); color:#fff; border:none; }
-.btn-outline { background:transparent; border:1px solid rgba(255,255,255,0.06); color:#fff; }
+/* Buttons */
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:10px;font-weight:800;cursor:pointer}
+.btn-primary{background:linear-gradient(90deg,var(--accent),var(--accent-dark));color:#fff;border:0}
+.btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#fff}
 
-/* right column — product card */
-.hero-right { flex:0 0 440px; position:relative; z-index:2; }
-.product-card {
-  width:100%;
-  background: var(--panel-bg);
-  padding:16px;
-  border-radius:12px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  border:1px solid rgba(255,255,255,0.03);
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-}
-.product-card img { width:100%; height:260px; object-fit:cover; border-radius:10px; display:block; background:#0b0b0b; }
-.product-card h3 { margin:12px 0 6px; color:#fff; font-weight:900; }
-.product-card p { margin:0 0 12px; color:var(--muted-2); text-align:center; }
+/* Right product card */
+.hero-right{flex:0 0 440px;z-index:2}
+.product-card{width:100%;background:var(--panel-bg);padding:16px;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;align-items:center}
+.product-card img{width:100%;height:260px;object-fit:cover;border-radius:10px;background:#0b0b0b;display:block}
+.product-card h3{margin:12px 0 6px;color:#fff;font-weight:900}
+.product-card p{margin:0 0 12px;color:var(--muted-2);text-align:center}
 
-/* hits carousel */
-.hits-section { max-width:1280px; margin:44px auto; padding:0 24px; color:var(--muted-2); }
-.hits-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
-.hits-title { font-size:20px; font-weight:900; color:#fff; }
+/* Hits carousel */
+.hits-section{max-width:1280px;margin:44px auto;padding:0 24px;color:var(--muted-2)}
+.hits-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.hits-title{font-size:20px;font-weight:900;color:#fff}
+.hits-track{display:flex;gap:18px;overflow-x:auto;padding-bottom:8px;scroll-behavior:smooth}
+.hits-track::-webkit-scrollbar{height:8px}
+.hits-track::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.06);border-radius:6px}
 
-.hits-track { display:flex; gap:18px; overflow-x:auto; padding-bottom:8px; scroll-behavior:smooth; }
-.hits-track::-webkit-scrollbar { height:8px; }
-.hits-track::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius:6px; }
+.card-mini{min-width:200px;background:var(--panel-bg);border-radius:10px;padding:10px;color:#fff;position:relative;text-align:center}
+.card-mini img{width:100%;height:140px;object-fit:cover;border-radius:8px;display:block}
+.card-mini .name{font-weight:800;margin-top:10px;min-height:40px}
+.card-mini .price{color:var(--muted-2);margin-top:6px}
 
-.card-mini { min-width:200px; background: var(--panel-bg); border-radius:10px; padding:10px; color:#fff; position:relative; text-align:center; }
-.card-mini img { width:100%; height:140px; object-fit:cover; border-radius:8px; display:block; }
-.card-mini .name { font-weight:800; margin-top:10px; min-height:40px; }
-.card-mini .price { color:var(--muted-2); margin-top:6px; }
+.badge-hit{position:absolute;left:10px;top:10px;background:#8fd19a;color:#07200b;font-weight:900;padding:6px 8px;border-radius:6px;font-size:12px}
 
-/* badge */
-.badge-hit { position:absolute; left:10px; top:10px; background:#8fd19a; color:#07200b; font-weight:900; padding:6px 8px; border-radius:6px; font-size:12px; }
+/* About */
+.about{max-width:1100px;margin:36px auto;padding:0 24px;color:var(--muted-2);line-height:1.7;text-align:center}
 
-/* about */
-.about { max-width:1100px; margin:36px auto; padding:0 24px; color:var(--muted-2); line-height:1.7; text-align:center; }
+/* Footer spacer */
+.footer-spacer{height:80px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.6))}
 
-/* dark footer spacer for aesthetic like in screenshot (optional) */
-.footer-spacer { height:80px; background:linear-gradient(180deg,transparent,rgba(0,0,0,0.6)); }
-
-/* responsive */
-@media (max-width:980px) {
-  .hero-inner { flex-direction:column; padding:32px 16px; }
-  .hero-left h1 { font-size:28px; }
-  .hero-right { width:100%; }
-  .card-mini { min-width:160px; }
-  .ministry-title { display:none; }
-  .hero-brand { top: 10px; }
+/* Responsive */
+@media (max-width:980px){
+  .hero-inner{flex-direction:column;padding:32px 16px}
+  .hero-left h1{font-size:28px}
+  .hero-right{width:100%}
+  .card-mini{min-width:160px}
 }
 </style>
 {% endblock %}
 
 {% block content %}
-  <!-- HERO: темний банер, зображення беремо /static/images/png/banner.png -->
-  <section class="hero" style="background-image:url('{% static 'images/png/banner.png' %}')">
-    <!-- decorative brand centered (to avoid overlapping the right product-card) -->
-    <div class="hero-brand" aria-hidden="true">
-     
-      <div class="brand-text">Міністерство Вугрів</div>
-    </div>
+<section class="hero" style="background-image:url('{% static "images/png/banner.png" %}')">
+  <div class="hero-brand" aria-hidden="true">
+    <div class="brand-text">Міністерство Вугрів</div>
+  </div>
 
-    <div class="hero-inner">
-      <div class="hero-left">
-        <div class="logo" aria-hidden="true">
-          {# small left-aligned logo if needed (kept for layout but not overlapping) #}
-          <img src="{% static 'images/png/logo.png' %}" alt="logo" style="height:40px;display:block">
-        </div>
-
-        {# faint decorative wordmark behind content (non-interactive) #}
-        <div class="ministry-title" aria-hidden="true">Міністерство Вугрів</div>
-
-        <h1>Копчені Вугрі, Ікра, Раки та багато корисних смачних морепродуктів.</h1>
-
-        <p class="lead">Преміальні продукти за доступною ціною, швидка доставка по Україні,замовляй оптом ВСЕ ПРОСТО та зрозуміло.</p>
-
-        <div class="cta-row" role="navigation" aria-label="Call to actions">
-          <a href="{% url 'products' %}" class="btn btn-primary">Каталог продуктів</a>
-          <a href="{% url 'products' %}?filter=hits" class="btn btn-outline">Хіти продажу</a>
-          <a href="{% url 'contact' %}" class="btn btn-outline">Контакти</a>
-        </div>
-
-        <div style="margin-top:16px;color:var(--muted-2);font-size:15px;max-width:680px;">
-          Порада: натисніть «Хіти продажу» щоб побачити найпопулярніші товари або перегляньте категорії для швидкого вибору.
-        </div>
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="logo" aria-hidden="true">
+        <img src="{% static 'images/png/logo.png' %}" alt="logo" style="height:40px;display:block">
       </div>
 
-      <div class="hero-right" aria-hidden="false">
-        <div class="product-card" aria-hidden="false">
-          <img src="{% static 'images/вугор головна.jpg' %}" alt="Копчений вугор">
-          <h3>Копчений вугор</h3>
-          <p>Ціна від 1000 грн / 1 шт — замовлення оптом та в роздріб.</p>
+      <div class="ministry-title" aria-hidden="true" style="font-family:Georgia,serif;font-weight:900;font-size:36px;color:rgba(255,255,255,0.06);position:absolute;right:-10px;top:18px;transform:rotate(-6deg);pointer-events:none;letter-spacing:2px">Міністерство Вугрів</div>
 
-          <div class="product-actions" style="width:100%;display:flex;gap:8px;">
-            <a href="{% url 'product_details' 1 %}?buy=1" class="btn btn-primary" style="flex:1">Купити</a>
-            <a href="{% url 'cart' %}" class="btn btn-outline" style="flex:1">Кошик</a>
-          </div>
+      <h1>Копчені Вугрі, Ікра, Раки та багато корисних смачних морепродуктів.</h1>
+      <p class="lead">Преміальні продукти за доступною ціною, швидка доставка по Україні. Замовляй оптом та в роздріб — все просто і зрозуміло.</p>
 
-          <div style="width:100%;margin-top:10px">
-            <a href="{% url 'favorites' %}" class="btn btn-outline" style="width:100%;display:block">Обране</a>
-          </div>
+      <div class="cta-row" role="navigation" aria-label="Call to actions">
+        <a href="{% url 'products' %}" class="btn btn-primary">Каталог продуктів</a>
+        <a href="{% url 'products' %}?filter=hits" class="btn btn-outline">Хіти продажу</a>
+        <a href="{% url 'contact' %}" class="btn btn-outline">Контакти</a>
+      </div>
 
-          {% if user.is_authenticated %}
-            {% if has_chats %}
-              <p style="margin:12px 0;">
-                <a class="btn btn-primary" href="{% url 'my_conversations' %}">
-                  💬 Мої чати ({{ chats_count }})
-                </a>
-              </p>
-            {% else %}
-              <p style="margin:12px 0;color:var(--muted-2);">У вас ще немає чатів — зробіть замовлення, щоб почати спілкування з продавцем.</p>
-            {% endif %}
-          {% else %}
+      <div style="margin-top:16px;color:var(--muted-2);font-size:15px;max-width:680px;">
+        Порада: натисніть «Хіти продажу», щоб побачити найпопулярніші товари або перегляньте категорії для швидкого вибору.
+      </div>
+    </div>
+
+    <div class="hero-right" aria-hidden="false">
+      <div class="product-card" aria-hidden="false">
+        <img src="{% static 'images/вугор головна.jpg' %}" alt="Копчений вугор">
+        <h3>Копчений вугор</h3>
+        <p>Ціна від 1000 грн / 1 шт — замовлення оптом та в роздріб.</p>
+
+        <div class="product-actions" style="width:100%;display:flex;gap:8px;">
+          <a href="{% url 'product_details' 1 %}?buy=1" class="btn btn-primary" style="flex:1">Купити</a>
+          <a href="{% url 'cart' %}" class="btn btn-outline" style="flex:1">Кошик</a>
+        </div>
+
+        <div style="width:100%;margin-top:10px">
+          <a href="{% url 'favorites' %}" class="btn btn-outline" style="width:100%;display:block">Обране</a>
+        </div>
+
+        {% if user.is_authenticated %}
+          {% if has_chats %}
             <p style="margin:12px 0;">
-              <a class="btn btn-outline" href="{% url 'login' %}?next={% url 'my_conversations' %}">Увійти, щоб подивитися чати</a>
+              <a class="btn btn-primary" href="{% url 'my_conversations' %}">💬 Мої чати ({{ chats_count }})</a>
             </p>
+          {% else %}
+            <p style="margin:12px 0;color:var(--muted-2);">У вас ще немає чатів — зробіть замовлення, щоб почати спілкування з продавцем.</p>
           {% endif %}
-        </div>
+        {% else %}
+          <p style="margin:12px 0;">
+            <a class="btn btn-outline" href="{% url 'login' %}?next={% url 'my_conversations' %}">Увійти, щоб подивитися чати</a>
+          </p>
+        {% endif %}
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- Хіти продажу: темний горизонтальний трек -->
-  <section class="hits-section" aria-label="Хіти продажу">
-    <div class="hits-header">
-      <div class="hits-title">Хіти продажу</div>
-      <div>
-        <a href="{% url 'products' %}?filter=hits" class="btn btn-outline">Всі хіти</a>
-      </div>
-    </div>
+<section class="hits-section" aria-label="Хіти продажу">
+  <div class="hits-header">
+    <div class="hits-title">Хіти продажу</div>
+    <div><a href="{% url 'products' %}?filter=hits" class="btn btn-outline">Всі хіти</a></div>
+  </div>
 
   <div class="hits-track" id="hitsTrack" tabindex="0" aria-label="Список хітів">
     {% for p in products|slice:":10" %}
@@ -275,10 +178,10 @@ body { background: var(--page-bg); }
           {% else %}
             <img src="{% static 'images/png/placeholder.png' %}" alt="{{ p.name }}">
           {% endif %}
+
           <div class="name">{{ p.name }}</div>
 
           <div class="price">
-            {# Покажемо пакетну ціну коли вона є, інакше стандарт за 100г #}
             {% if p.package_price_display %}
               {% if p.package_size_grams %}
                 <strong>{{ p.package_price_display }} грн / {{ p.package_size_grams }} г</strong>
@@ -298,7 +201,6 @@ body { background: var(--page-bg); }
 
           <div class="price-small" style="color:var(--muted);font-weight:700">
             {% if p.price_per_100g and p.package_size_grams %}
-              {# додатковий рядок за бажанням, можна прибрати #}
               {{ p.price_per_100g|floatformat:2 }} грн / 100г
             {% endif %}
           </div>
@@ -306,106 +208,67 @@ body { background: var(--page-bg); }
       </article>
     {% endfor %}
   </div>
+</section>
 
-          <div class="price-small" style="color:var(--muted);font-weight:700">
-            {% if p.price_per_100g and p.package_size_grams %}
-              {# додатковий рядок за бажанням, можна прибрати #}
-              {{ p.price_per_100g|floatformat:2 }} грн / 100г
-            {% endif %}
-          </div>
-        </a>
-      </article>
-    {% endfor %}
-  </div>
-  </section>
+<section class="about" aria-label="Про нас">
+  <h2 style="color:#fff;margin-bottom:8px">VugriUkraine</h2>
+  <p style="max-width:900px;margin:0 auto 18px;color:var(--muted-2)">
+    VugriUkraine — інтернет-магазин де найкраща ціна та найкраща якість копчених вугрів, ікри та ракоподібних. Ми пропонуємо широкий вибір свіжих та смачних морепродуктів з доставкою по всій Україні.
+  </p>
 
-  <!-- Про нас / промо (темно, центровано як на скрині) -->
-  <section class="about" aria-label="Про нас">
-    <h2 style="color:#fff;margin-bottom:8px">VugriUkraine</h2>
-    <p style="max-width:900px;margin:0 auto 18px;color:var(--muted-2)">
-      VugriUkraine — інтернет-магазин де найкраща ціна та найкраща якість копчених вугрів, ікри та ракоподібних. Ми пропонуємо широкий вибір свіжих та смачних морепродуктів з доставкою по всій Україні.
-    </p>
+  <div style="max-width:1100px;margin:18px auto;display:flex;gap:18px;flex-wrap:wrap;align-items:center;justify-content:center">
+    <img src="{% static 'images/png/woman.png' %}" alt="Жінка" style="max-width:420px;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6)">
+    <div style="min-width:260px;max-width:560px;color:var(--muted-2);line-height:1.6;text-align:left">
+      <h3 style="color:#fff;margin-top:0">Чому обирають нас</h3>
+      <ul style="padding-left:18px;margin-top:8px">
+        <li>Якість</li>
+        <li>Ціна</li>
+        <li>Швидка доставка</li>
+        <li>Швидке оброблення замовлень</li>
+        <li>Найкращі відгуки</li>
+      </ul>
 
-    <div style="max-width:1100px;margin:18px auto;display:flex;gap:18px;flex-wrap:wrap;align-items:center;justify-content:center">
-      <img src="{% static 'images/png/woman.png' %}" alt="Жінка" style="max-width:420px;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6)">
-      <div style="min-width:260px;max-width:560px;color:var(--muted-2);line-height:1.6;text-align:left">
-        <h3 style="color:#fff;margin-top:0">Чому обирають нас</h3>
-        <ul style="padding-left:18px;margin-top:8px">
-          <li>Якість</li>
-          <li>Ціна</li>
-          <li>Швидка доставка</li>
-          <li>Швидке оброблення замовлень</li>
-          <li>Найкращі відгуки</li>
-        </ul>
-
-        <div style="margin-top:12px">
-          <a href="{% url 'products' %}" class="btn btn-primary">Почати покупки</a>
-          <a href="{% url 'contact' %}" class="btn btn-outline" style="margin-left:8px">Зв'язатися</a>
-        </div>
+      <div style="margin-top:12px">
+        <a href="{% url 'products' %}" class="btn btn-primary">Почати покупки</a>
+        <a href="{% url 'contact' %}" class="btn btn-outline" style="margin-left:8px">Зв'язатися</a>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <div class="footer-spacer" aria-hidden="true"></div>
+<div class="footer-spacer" aria-hidden="true"></div>
 
-  <!-- Inline JS: drag scroll, автоскрол і прості UX enhancement -->
-  <script>
-  (function(){
-    const track = document.getElementById('hitsTrack');
-    if (!track) return;
+<script>
+(function(){
+  const track = document.getElementById('hitsTrack');
+  if (!track) return;
 
-    // Drag-to-scroll
-    let isDown = false, startX = 0, scrollLeft = 0;
-    track.addEventListener('pointerdown', function(e){
-      isDown = true;
-      track.setPointerCapture(e.pointerId);
-      startX = e.clientX;
-      scrollLeft = track.scrollLeft;
-      track.style.cursor = 'grabbing';
-    });
-    track.addEventListener('pointermove', function(e){
-      if (!isDown) return;
-      const x = e.clientX;
-      const walk = (startX - x);
-      track.scrollLeft = scrollLeft + walk;
-    });
-    track.addEventListener('pointerup', function(e){
-      isDown = false;
-      try { track.releasePointerCapture(e.pointerId); } catch(e){}
-      track.style.cursor = '';
-    });
-    track.addEventListener('pointercancel', function(){ isDown = false; track.style.cursor = ''; });
+  // Drag-to-scroll
+  let isDown=false, startX=0, scrollLeft=0;
+  track.addEventListener('pointerdown', (e)=>{
+    isDown=true; track.setPointerCapture(e.pointerId); startX=e.clientX; scrollLeft=track.scrollLeft; track.style.cursor='grabbing';
+  });
+  track.addEventListener('pointermove', (e)=>{ if(!isDown) return; const walk=(startX-e.clientX); track.scrollLeft = scrollLeft + walk; });
+  track.addEventListener('pointerup', (e)=>{ isDown=false; try{track.releasePointerCapture(e.pointerId)}catch(e){} track.style.cursor=''; });
+  track.addEventListener('pointercancel', ()=>{ isDown=false; track.style.cursor=''; });
 
-    // Autoscroll (delicate)
-    let pause = false;
-    track.addEventListener('mouseenter', () => pause = true);
-    track.addEventListener('mouseleave', () => pause = false);
-    setInterval(function(){
-      if (!pause && track.scrollWidth > track.clientWidth) {
-        track.scrollBy({ left: Math.round(track.clientWidth * 0.4), behavior: 'smooth' });
-        if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 10) {
-          setTimeout(()=>{ track.scrollTo({ left:0, behavior:'smooth' }); }, 800);
-        }
-      }
-    }, 4200);
+  // Autoscroll
+  let pause=false;
+  track.addEventListener('mouseenter', ()=>pause=true);
+  track.addEventListener('mouseleave', ()=>pause=false);
+  setInterval(()=>{ if(!pause && track.scrollWidth>track.clientWidth){ track.scrollBy({left:Math.round(track.clientWidth*0.4),behavior:'smooth'}); if(track.scrollLeft+track.clientWidth>=track.scrollWidth-10){ setTimeout(()=>track.scrollTo({left:0,behavior:'smooth'}),800); } } }, 4200);
 
-    // Click on card (dataset url) as fallback
-    track.addEventListener('click', function(e){
-      let el = e.target;
-      while (el && el !== track) {
-        if (el.matches && el.matches('.card-mini') && el.dataset && el.dataset.url) {
-          window.location = el.dataset.url;
-          return;
-        }
-        el = el.parentNode;
-      }
-    });
+  // Click on card fallback
+  track.addEventListener('click', (e)=>{
+    let el=e.target;
+    while(el && el!==track){
+      if(el.matches && el.matches('.card-mini') && el.dataset && el.dataset.url){ window.location=el.dataset.url; return; }
+      el=el.parentNode;
+    }
+  });
 
-    // Tiny hover animation for primary buttons
-    document.querySelectorAll('.btn.btn-primary').forEach(btn=>{
-      btn.addEventListener('mouseenter', ()=> btn.style.transform = 'translateY(-3px)');
-      btn.addEventListener('mouseleave', ()=> btn.style.transform = '');
-    });
-  })();
-  </script>
+  // Tiny hover animation for primary buttons
+  document.querySelectorAll('.btn.btn-primary').forEach(btn=>{ btn.addEventListener('mouseenter', ()=>btn.style.transform='translateY(-3px)'); btn.addEventListener('mouseleave', ()=>btn.style.transform=''); });
+})();
+</script>
 {% endblock %}
