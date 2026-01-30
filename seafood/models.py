@@ -69,6 +69,20 @@ class SeafoodProduct(models.Model):
         help_text="Якщо встановлено, товар продається упаковками цього розміру (в грамах), наприклад 500"
     )
 
+    # Нове: продавати в штуках/одиницях (банка, упаковка тощо)
+    sold_in_units = models.BooleanField(
+        default=False,
+        help_text="Позначте, якщо товар продається в одиницях (шт/банка) замість грами/пакету"
+    )
+    price_per_unit = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Ціна за 1 одиницю (вказуйте, якщо sold_in_units=True)"
+    )
+    unit_label = models.CharField(
+        max_length=30, default='шт', blank=True,
+        help_text="Напис у шаблоні для одиниці (наприклад 'шт', 'банка')"
+    )
+
     class Meta:
         verbose_name = "Продукт"
         verbose_name_plural = "Продукти"
