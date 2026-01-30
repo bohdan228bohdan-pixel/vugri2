@@ -217,17 +217,6 @@
   {% endif %}
 </div>
 
-<div class="controls-row" role="group" aria-label="Дії з товаром">
-  <div style="display:flex;align-items:center;gap:8px">
-    <button id="qty-decr" class="btn-outline" type="button" aria-label="зменшити">−</button>
-
-    {# Уніфікований інпут: data-attr вказує тип кількості (units або grams) для JS #}
-    <input id="qty" class="qty-input" type="number" value="1" min="1" step="1" aria-label="кількість"
-           data-quantity-type="{% if product.sold_in_units %}units{% else %}grams{% endif %}" />
-
-    <button id="qty-incr" class="btn-outline" type="button" aria-label="збільшити">+</button>
-  </div>
-
 <!-- КІНЕЦЬ НОВОГО БЛОКУ -->
 
           <div class="controls-row" role="group" aria-label="Дії з товаром">
