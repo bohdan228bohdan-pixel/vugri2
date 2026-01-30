@@ -189,8 +189,15 @@
 
           <div class="product-meta">{{ product.description }}</div>
 
+<!-- НОВИЙ БЛОК: підтримка продажу в штуках або в грамах -->
 <div class="price">
-  {% if package_price %}
+  {% if product.sold_in_units %}
+    {% if product.price_per_unit %}
+      <strong>{{ product.price_per_unit|floatformat:2 }} грн / 1 {{ product.unit_label|default:"шт" }}</strong>
+    {% else %}
+      <span>Ціна уточнюється</span>
+    {% endif %}
+  {% elif package_price %}
     {# Для сторінки товару view може передавати package_price/package_size або атрибути product.package_size_grams #}
     {% if package_size %}
       <strong>{{ package_price }} грн / {{ package_size }} г</strong>
@@ -209,6 +216,19 @@
     {% endif %}
   {% endif %}
 </div>
+
+<div class="controls-row" role="group" aria-label="Дії з товаром">
+  <div style="display:flex;align-items:center;gap:8px">
+    <button id="qty-decr" class="btn-outline" type="button" aria-label="зменшити">−</button>
+
+    {# Уніфікований інпут: data-attr вказує тип кількості (units або grams) для JS #}
+    <input id="qty" class="qty-input" type="number" value="1" min="1" step="1" aria-label="кількість"
+           data-quantity-type="{% if product.sold_in_units %}units{% else %}grams{% endif %}" />
+
+    <button id="qty-incr" class="btn-outline" type="button" aria-label="збільшити">+</button>
+  </div>
+
+<!-- КІНЕЦЬ НОВОГО БЛОКУ -->
 
           <div class="controls-row" role="group" aria-label="Дії з товаром">
             <div style="display:flex;align-items:center;gap:8px">
