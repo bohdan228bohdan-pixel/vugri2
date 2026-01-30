@@ -129,14 +129,29 @@
           <div class="cart-item-info">
             <div class="title">{{ item.name }}</div>
 <div class="price">
-  {% if p.package_price_display %}
-    <strong>1 шт — {{ p.package_price_display }} грн</strong>
+  {% if item.type == 'unit' %}
+    {# Ціна за одну одиницю #}
+    <strong>{{ item.price_per_unit|floatformat:2 }} грн / 1 {{ item.unit_label|default:"шт" }}</strong>
+  {% elif item.type == 'weight' %}
+    {# Ціна за 100г (weight items зберігають price_per_100g і quantity = кількість 100г-одиниць) #}
+    <strong>{{ item.price_per_100g|floatformat:2 }} грн / 100г</strong>
   {% else %}
-    {% if p.price_per_100g %}
-      <strong>{{ p.price_per_100g|floatformat:2 }} грн / 100г</strong>
+    {# fallback: якщо старий формат #}
+    {% if item.price %}
+      <strong>{{ item.price|floatformat:2 }} грн</strong>
     {% else %}
       <span>Ціна уточнюється</span>
     {% endif %}
+  {% endif %}
+</div>
+
+<div class="meta" style="color:var(--muted);margin-top:6px;font-size:0.95rem;">
+  {% if item.type == 'unit' %}
+    {{ item.quantity }} {{ item.unit_label|default:"шт" }} — {{ item.total_price }} {{ item.currency }}
+  {% elif item.type == 'weight' %}
+    {{ item.quantity }} × 100г — {{ item.total_price }} {{ item.currency }}
+  {% else %}
+    {{ item.quantity }} — {{ item.total_price }} {{ item.currency }}
   {% endif %}
 </div>
           </div>
