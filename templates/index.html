@@ -263,7 +263,7 @@ body { background: var(--page-bg); }
       </div>
     </div>
 
-    <div class="hits-track" id="hitsTrack" tabindex="0" aria-label="Список хітів">
+  <div class="hits-track" id="hitsTrack" tabindex="0" aria-label="Список хітів">
     {% for p in products|slice:":10" %}
       <article class="card-mini" data-url="{% url 'product_details' p.id %}">
         {% if forloop.counter0 < 6 %}
@@ -295,6 +295,17 @@ body { background: var(--page-bg); }
               {% endif %}
             {% endif %}
           </div>
+
+          <div class="price-small" style="color:var(--muted);font-weight:700">
+            {% if p.price_per_100g and p.package_size_grams %}
+              {# додатковий рядок за бажанням, можна прибрати #}
+              {{ p.price_per_100g|floatformat:2 }} грн / 100г
+            {% endif %}
+          </div>
+        </a>
+      </article>
+    {% endfor %}
+  </div>
 
           <div class="price-small" style="color:var(--muted);font-weight:700">
             {% if p.price_per_100g and p.package_size_grams %}
