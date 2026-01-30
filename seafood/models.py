@@ -3,6 +3,7 @@ from django.db import models
 from django.utils import timezone
 from decimal import Decimal, ROUND_HALF_UP
 from django.utils.text import slugify
+from django.core.exceptions import ValidationError
 
 
 class Category(models.Model):
