@@ -129,6 +129,16 @@ class SeafoodProduct(models.Model):
         p = self.compute_package_price()
         return "{:.2f}".format(p) if p is not None else None
 
+    def clean(self):
+        """
+        Model-level validation:
+        - якщо sold_in_units=True, price_per_unit має бути задано.
+        - (додатково) можна очистити або попереджувати про package_size_grams.
+        """
+        from django.core.exceptions import ValidationError
+        if self.sold_in_units and not self.price_per_unit:
+            raise ValidationError("Якщо товар продається в одиницях, вкажіть price_per_unit.")
+
 class EmailVerification(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     code = models.CharField(max_length=6)
