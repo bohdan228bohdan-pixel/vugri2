@@ -20,6 +20,8 @@ from django.views.decorators.http import require_POST, require_http_methods
 from django.urls import reverse
 from django.templatetags.static import static
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from .forms import CallbackRequestForm
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
 
 from django.contrib.admin.views.decorators import staff_member_required
 
@@ -2000,3 +2002,23 @@ def debug_session_cart(request):
         'cart': request.session.get('cart'),
         'full': data
     }, json_dumps_params={'ensure_ascii': False})
+
+@require_POST
+@csrf_protect
+def request_callback(request):
+    form = CallbackRequestForm(request.POST)
+    if form.is_valid():
+        cb = form.save()
+        # опціонально: відправити email адміну
+        try:
+            if getattr(settings, 'DEFAULT_FROM_EMAIL', None) and getattr(settings, 'ADMIN_EMAIL', None):
+                subject = f"Новий запит зворотного зв'язку #{cb.pk}"
+                body = f"Телефон: {cb.phone}\nІм'я: {cb.name}\nПродукт: {cb.product}\nЧас: {cb.preferred_time}\nПовідомлення:\n{cb.message}\n\nПосилання в адмін: /admin/seafood/callbackrequest/{cb.pk}/change/"
+                send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [settings.ADMIN_EMAIL], fail_silently=True)
+        except Exception:
+            # не впаде при помилці відправки пошти
+            pass
+        return JsonResponse({'ok': True, 'message': 'Дякуємо! Ми вам зателефонуємо.'})
+    else:
+        # повертаємо помилки в JSON
+        return JsonResponse({'ok': False, 'errors': form.errors}, status=400)
