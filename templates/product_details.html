@@ -263,6 +263,9 @@
           <h4 style="color:var(--white)">Опис</h4>
           <p style="color:var(--muted)">{{ product.description }}</p>
         </div>
+        <button id="requestCallbackBtn" class="btn btn-outline" data-product-id="{{ product.id }}" data-product-name="{{ product.name }}">
+  Замовити зворотній зв'язок
+        </button>
       </div>
 
       <!-- REVIEWS -->
@@ -666,5 +669,121 @@ if (addBtn) {
             }
           });
         });
+</script>
+<!-- CALLBACK modal (place near the end of product_details.html, before {% endblock %}) -->
+<div id="callbackModal" class="callback-modal" style="display:none;">
+  <div class="callback-modal-inner" style="max-width:520px;margin:40px auto;padding:18px;background:var(--panel-bg);border-radius:10px;color:var(--muted-2);">
+    <h3 style="margin-top:0;color:#fff">Замовити зворотній зв'язок</h3>
+    <form id="callbackForm">
+      {% csrf_token %}
+      <input type="hidden" name="product" id="cb_product" value="{{ product.id }}">
+      <div style="margin-bottom:8px">
+        <label style="display:block;color:var(--muted)">Телефон *</label>
+        <input type="text" name="phone" id="cb_phone" placeholder="+380..." required style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#fff">
+      </div>
+      <div style="margin-bottom:8px">
+        <label style="display:block;color:var(--muted)">Ім'я</label>
+        <input type="text" name="name" id="cb_name" placeholder="Ваше ім'я (необов'язково)" style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#fff">
+      </div>
+      <div style="margin-bottom:8px">
+        <label style="display:block;color:var(--muted)">Зручний час</label>
+        <input type="text" name="preferred_time" id="cb_time" placeholder="Наприклад: завтра після 18:00" style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#fff">
+      </div>
+      <div style="margin-bottom:8px">
+        <label style="display:block;color:var(--muted)">Повідомлення</label>
+        <textarea name="message" id="cb_message" rows="3" placeholder="Коротко опишіть, що треба" style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#fff"></textarea>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <button type="submit" class="btn btn-primary" id="cbSendBtn">Надіслати</button>
+        <button type="button" class="btn btn-outline" id="cbCancel">Скасувати</button>
+        <a href="tel:+380986666466" class="btn btn-outline" style="margin-left:auto">Подзвонити: +38 (098) 666‑64‑66</a>
+      </div>
+
+      <div id="cbResult" style="margin-top:10px;display:none;color:lightgreen"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Minimal CSS for modal (add to template head or global CSS) -->
+<style>
+.callback-modal { position:fixed; inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;align-items:flex-start;justify-content:center;padding-top:40px; }
+.callback-modal-inner { box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+</style>
+
+<!-- JS: open modal, submit via fetch to request_callback -->
+<script>
+(function(){
+  const openBtn = document.getElementById('requestCallbackBtn');
+  const modal = document.getElementById('callbackModal');
+  const cancelBtn = document.getElementById('cbCancel');
+  const form = document.getElementById('callbackForm');
+  const resultBox = document.getElementById('cbResult');
+  const sendBtn = document.getElementById('cbSendBtn');
+
+  if (!openBtn || !modal || !form) return;
+
+  function openModal(productId, productName){
+    const hid = modal.querySelector('#cb_product');
+    if (hid) hid.value = productId || hid.value;
+    // optionally show product name in modal title
+    modal.style.display = 'flex';
+    resultBox.style.display = 'none';
+  }
+  function closeModal(){
+    modal.style.display = 'none';
+  }
+
+  openBtn.addEventListener('click', function(e){
+    e.preventDefault();
+    const pid = this.dataset.productId || '{{ product.id }}';
+    openModal(pid, this.dataset.productName || '{{ product.name }}');
+  });
+  cancelBtn.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
+
+  // CSRF token from the form (rendered by Django)
+  function getCsrfToken(){
+    const el = form.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+  }
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    sendBtn.disabled = true;
+    const data = new FormData(form);
+    fetch("{% url 'request_callback' %}", {
+      method: "POST",
+      headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
+      body: data,
+      credentials: 'same-origin'
+    }).then(async res => {
+      const json = await res.json().catch(()=> null);
+      if (res.ok && json && json.ok){
+        resultBox.style.color = 'lightgreen';
+        resultBox.textContent = json.message || 'Дякуємо! Ми Вам зателефонуємо.';
+        resultBox.style.display = 'block';
+        form.reset();
+        setTimeout(closeModal, 2000);
+      } else {
+        resultBox.style.color = '#ff8a8a';
+        resultBox.textContent = (json && (json.error || JSON.stringify(json.errors))) || 'Помилка відправки';
+        resultBox.style.display = 'block';
+      }
+    }).catch(err=>{
+      resultBox.style.color = '#ff8a8a';
+      resultBox.textContent = 'Помилка мережі. Спробуйте пізніше.';
+      resultBox.style.display = 'block';
+      console.error(err);
+    }).finally(()=>{
+      sendBtn.disabled = false;
+    });
+  });
+
+  // close modal on backdrop click
+  modal.addEventListener('click', function(e){
+    if (e.target === modal) closeModal();
+  });
+
+})();
 </script>
 {% endblock %}
