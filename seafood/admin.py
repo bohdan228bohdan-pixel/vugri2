@@ -173,3 +173,11 @@ for mdl in (Order, EmailVerification, Favorite, Review, ProductImage, Message):
         admin.site.register(mdl)
     except AlreadyRegistered:
         pass
+
+from .models import CallbackRequest
+
+@admin.register(CallbackRequest)
+class CallbackRequestAdmin(admin.ModelAdmin):
+    list_display = ('phone', 'name', 'product', 'created_at', 'processed')
+    list_filter = ('processed', 'created_at')
+    search_fields = ('phone', 'name', 'message')
