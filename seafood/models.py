@@ -311,3 +311,20 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message #{self.id} by {self.sender}"
+
+class CallbackRequest(models.Model):
+    name = models.CharField("Ім'я", max_length=120, blank=True)
+    phone = models.CharField("Телефон", max_length=40)
+    message = models.TextField("Повідомлення", blank=True)
+    preferred_time = models.CharField("Зручний час", max_length=80, blank=True)
+    product = models.ForeignKey('seafood.SeafoodProduct', null=True, blank=True, on_delete=models.SET_NULL, related_name='callback_requests')
+    created_at = models.DateTimeField("Створено", default=timezone.now)
+    processed = models.BooleanField("Опрацьовано", default=False)
+
+    class Meta:
+        verbose_name = "Запит зворотного зв'язку"
+        verbose_name_plural = "Запити зворотного зв'язку"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.phone} - {self.created_at:%Y-%m-%d %H:%M}"
