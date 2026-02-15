@@ -68,7 +68,6 @@ urlpatterns = [
     path('conversations/archived/', seafood_views.archived_conversations, name='archived_conversations'),
     path('review/<int:review_id>/delete/', seafood_views.delete_review, name='delete_review'),
     path('debug/session-cart/', seafood_views.debug_session_cart, name='debug_session_cart'),
-    path('request-callback/', seafood_views.request_callback, name='request_callback')
 ]
 
 # Password change (user must be logged in)
