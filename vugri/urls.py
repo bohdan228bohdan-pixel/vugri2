@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import re_path, path, reverse_lazy
+from django.urls import include, re_path, path, reverse_lazy
 from django.contrib.auth import views as auth_views
 from django.views.static import serve
 
@@ -69,6 +69,7 @@ urlpatterns = [
     path('review/<int:review_id>/delete/', seafood_views.delete_review, name='delete_review'),
     path('debug/session-cart/', seafood_views.debug_session_cart, name='debug_session_cart'),
     path('request-callback/', views.request_callback, name='request_callback'),
+    path('seafood/', include('seafood.urls')),
 ]
 
 # Password change (user must be logged in)
