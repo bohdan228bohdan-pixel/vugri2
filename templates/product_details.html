@@ -122,6 +122,21 @@ bohdan228bohdan-pixel"
   #product-title { font-size:20px; }
   .price { font-size:22px; }
 }
+#callbackModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1200; align-items:center; justify-content:center; }
+.callback-modal-inner { background:#0b0b0b; color:#fff; padding:20px; border-radius:12px; width:100%; max-width:520px; box-shadow:0 14px 40px rgba(0,0,0,0.6); border:1px solid rgba(255,0,0,0.08); }
+.callback-modal-inner h3 { color:#ff4d4d; margin:0 0 8px; }
+.callback-field { margin-top:10px; }
+.callback-field label { display:block; color:#bdbdbd; margin-bottom:6px; font-size:0.95rem; }
+.callback-field input[type="text"], .callback-field textarea { width:100%; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:#0f0f0f; color:#fff; }
+.callback-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; align-items:center; }
+.btn-cb { background:linear-gradient(90deg,#ff5a5a,#c60000); color:#fff; border:0; padding:10px 14px; border-radius:10px; font-weight:700; cursor:pointer; }
+.btn-cb.outline { background:transparent; border:1px solid rgba(255,255,255,0.06); color:#fff; }
+.cb-result { margin-top:10px; display:none; font-weight:700; }
+.call-now { background:#111; color:#ff5a5a; border:1px solid rgba(255,90,90,0.12); padding:8px 10px; border-radius:8px; text-decoration:none; display:inline-block; }
+.copy-btn { background:transparent; border:1px dashed rgba(255,255,255,0.06); color:#fff; padding:6px 8px; border-radius:8px; cursor:pointer; }
+.request-cb-float { display:inline-flex; gap:8px; align-items:center; }
+.request-cb-float .btn-cb { box-shadow: 0 8px 24px rgba(198,0,0,0.18); transform: translateY(0); transition: transform .12s ease; }
+.request-cb-float .btn-cb:hover { transform: translateY(-2px); }
 </style>
 {% endblock %}
 
@@ -222,16 +237,39 @@ bohdan228bohdan-pixel"
 
 <!-- КІНЕЦЬ НОВОГО БЛОКУ -->
 
-          <div class="controls-row" role="group" aria-label="Дії з товаром">
-            <div style="display:flex;align-items:center;gap:8px">
-              <button id="qty-decr" class="btn-outline" type="button" aria-label="зменшити">−</button>
-              <input id="qty" class="qty-input" type="number" value="1" min="1" step="1" aria-label="кількість" />
-              <button id="qty-incr" class="btn-outline" type="button" aria-label="збільшити">+</button>
-              <button id="requestCallbackBtn" class="btn btn-outline"
-        data-product-id="{{ product.id }}" data-product-name="{{ product.name }}">
-  Замовити зворотній зв'язок
-              </button>
-            </div>
+  <div id="callbackModal" class="callback-modal" role="dialog" aria-modal="true" aria-labelledby="cbTitle">
+  <div class="callback-modal-inner">
+    <h3 id="cbTitle">Замовити зворотній зв'язок</h3>
+    <form id="callbackForm" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="product" id="cb_product" value="{{ product.id }}">
+      <div class="callback-field">
+        <label for="cb_phone">Телефон *</label>
+        <input type="text" name="phone" id="cb_phone" placeholder="+380XXXXXXXXX" required>
+      </div>
+      <div class="callback-field">
+        <label for="cb_name">Ім'я</label>
+        <input type="text" name="name" id="cb_name" placeholder="Ваше ім'я (необов'язково)">
+      </div>
+      <div class="callback-field">
+        <label for="cb_message">Повідомлення</label>
+        <textarea name="message" id="cb_message" rows="3" placeholder="Коротко опишіть питання/побажання"></textarea>
+      </div>
+
+      <div class="callback-row">
+        <button id="cbSendBtn" class="btn-cb" type="submit">Надіслати</button>
+        <button type="button" id="cbCancel" class="btn-cb outline">Скасувати</button>
+
+        <!-- Часна кнопка "Зателефонувати зараз" — використовує tel: (працює на мобільних).
+             Якщо браузер/пристрій не підтримує, кнопка копіює номер у буфер. -->
+        <a id="callNowLink" class="call-now" href="tel:{{ product_contact_phone|default:'+380501234567' }}">Зателефонувати зараз</a>
+        <button type="button" id="cbCopyBtn" class="copy-btn" data-tel="{{ product_contact_phone|default:'+380501234567' }}">Копіювати номер</button>
+      </div>
+
+      <div id="cbResult" class="cb-result"></div>
+    </form>
+  </div>
+</div>
 
             <div style="display:flex;gap:10px;align-items:center">
               {% if user.is_authenticated %}
@@ -676,28 +714,6 @@ if (addBtn) {
 </script>
 
 
-<div id="callbackModal" class="callback-modal" style="display:none;">
-  <div class="callback-modal-inner" role="dialog" aria-modal="true" aria-labelledby="cbTitle">
-    <h3 id="cbTitle">Замовити зворотній зв'язок</h3>
-    <form id="callbackForm" method="post">
-      {% csrf_token %}
-      <input type="hidden" name="product" id="cb_product" value="{{ product.id }}">
-      <div>
-        <label>Телефон *</label>
-        <input type="text" name="phone" id="cb_phone" placeholder="+380XXXXXXXXX" required>
-      </div>
-      <div>
-        <label>Ім'я</label>
-        <input type="text" name="name" id="cb_name" placeholder="Ваше ім'я (необов'язково)">
-      </div>
-      <div>
-        <label>Зручний час</label>
-        <input type="text" name="preferred_time" id="cb_time" placeholder="Наприклад: завтра після 18:00">
-      </div>
-      <div>
-        <label>Повідомлення</label>
-        <textarea name="message" id="cb_message" rows="3" placeholder="Коротко опишіть запит"></textarea>
-      </div>
 
       <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
         <button type="submit" class="btn btn-primary" id="cbSendBtn">Надіслати</button>
@@ -717,71 +733,67 @@ if (addBtn) {
 </style>
 
 <script>
-(function(){
-  const openBtn = document.getElementById('requestCallbackBtn');
-  const modal = document.getElementById('callbackModal');
-  const cancelBtn = document.getElementById('cbCancel');
-  const form = document.getElementById('callbackForm');
-  const resultBox = document.getElementById('cbResult');
-  const sendBtn = document.getElementById('cbSendBtn');
-
-  if (!openBtn || !modal || !form) return;
+document.addEventListener('DOMContentLoaded', function () {
+  const q = sel => document.querySelector(sel);
+  const cbModal = q('#callbackModal');
+  const cbForm = q('#callbackForm');
+  const cbResult = q('#cbResult');
+  const openBtn = q('#requestCallbackBtn');
+  const cbCopyBtn = q('#cbCopyBtn');
+  const callLink = q('#callNowLink');
 
   function openModal(productId){
-    const hid = modal.querySelector('#cb_product');
-    if (hid && productId) hid.value = productId;
-    resultBox.style.display = 'none';
-    modal.style.display = 'flex';
+    if(cbModal) cbModal.style.display='flex';
+    if(cbForm) cbForm.querySelector('#cb_product').value = productId || '{{ product.id }}';
   }
-  function closeModal(){ modal.style.display = 'none'; }
+  function closeModal(){ if(cbModal) cbModal.style.display='none'; }
 
-  openBtn.addEventListener('click', function(e){
+  openBtn?.addEventListener('click', function(e){
     e.preventDefault();
-    openModal(this.dataset.productId || '{{ product.id }}');
+    openModal(this.dataset?.productId || '{{ product.id }}');
   });
-  cancelBtn.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
 
-  function getCsrfToken(){
-    const el = form.querySelector('[name=csrfmiddlewaretoken]');
-    return el ? el.value : '';
+  q('#cbCancel')?.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
+
+  if(cbForm){
+    cbForm.addEventListener('submit', async function(e){
+      e.preventDefault();
+      const form = new FormData(cbForm);
+      const csrftoken = (document.cookie.split('; ').find(c=>c.startsWith('csrftoken='))||'').split('=')[1] || '';
+      q('#cbSendBtn').disabled = true;
+      try{
+        const res = await fetch("{% url 'request_callback' %}", { method:'POST', headers:{ 'X-CSRFToken': csrftoken }, body: form, credentials:'same-origin' });
+        const json = await res.json().catch(()=>null);
+        if(res.ok && json && json.ok){
+          cbResult.style.color='lightgreen'; cbResult.textContent = json.message || 'Дякуємо!'; cbResult.style.display='block';
+          cbForm.reset();
+          setTimeout(closeModal,1200);
+        } else {
+          cbResult.style.color='salmon'; cbResult.textContent = json?.error || JSON.stringify(json?.errors) || 'Помилка'; cbResult.style.display='block';
+        }
+      }catch(err){
+        console.error(err);
+        cbResult.style.color='salmon'; cbResult.textContent = 'Помилка мережі'; cbResult.style.display='block';
+      }finally{
+        q('#cbSendBtn').disabled = false;
+      }
+    });
   }
 
-  form.addEventListener('submit', function(ev){
-    ev.preventDefault();
-    sendBtn.disabled = true;
-    resultBox.style.display = 'none';
-    const data = new FormData(form);
-
-    fetch("{% url 'request_callback' %}", {
-      method: "POST",
-      headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
-      body: data,
-      credentials: 'same-origin'
-    }).then(async res => {
-      const json = await res.json().catch(()=>null);
-      if (res.ok && json && json.ok){
-        resultBox.style.color = 'green';
-        resultBox.textContent = json.message || 'Дякуємо! Ми зателефонуємо.';
-        resultBox.style.display = 'block';
-        form.reset();
-        setTimeout(closeModal, 1700);
-      } else {
-        resultBox.style.color = 'red';
-        resultBox.textContent = (json && (json.error || JSON.stringify(json.errors))) || 'Помилка відправки';
-        resultBox.style.display = 'block';
-      }
-    }).catch(err=>{
-      resultBox.style.color = 'red';
-      resultBox.textContent = 'Помилка мережі. Спробуйте пізніше.';
-      resultBox.style.display = 'block';
-      console.error(err);
-    }).finally(()=>{ sendBtn.disabled = false; });
+  cbCopyBtn?.addEventListener('click', function(){
+    const tel = this.dataset.tel || callLink?.getAttribute('href')?.replace('tel:','') || '';
+    if(!tel) return;
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(tel).then(()=> {
+        alert('Номер скопійовано: ' + tel);
+      }).catch(()=> {
+        prompt('Скопіюйте номер вручну:', tel);
+      });
+    } else {
+      prompt('Скопіюйте номер вручну:', tel);
+    }
   });
 
-  // close when clicking outside dialog
-  modal.addEventListener('click', function(e){
-    if (e.target === modal) closeModal();
-  });
-})();
+});
 </script>
 {% endblock %}
