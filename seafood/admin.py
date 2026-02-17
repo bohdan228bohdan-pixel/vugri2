@@ -181,23 +181,3 @@ class CallbackRequestAdmin(admin.ModelAdmin):
     list_display = ('phone', 'name', 'product', 'created_at', 'processed')
     list_filter = ('processed', 'created_at')
     search_fields = ('phone', 'name', 'message')
-
-
-@admin.register(CallbackRequest)
-class CallbackRequestAdmin(admin.ModelAdmin):
-    list_display = ('phone', 'name', 'product', 'created_at', 'processed', 'call_button')
-    list_filter = ('processed', 'created_at')
-    search_fields = ('phone', 'name', 'message')
-
-    def call_button(self, obj):
-        tel = obj.phone or ''
-        if not tel:
-            return '-'
-        return mark_safe(
-            f'<a class="button" href="tel:{tel}" style="margin-right:6px;padding:4px 8px;background:#111;color:#ff5a5a;border-radius:6px;text-decoration:none;border:1px solid rgba(255,90,90,0.12)">Call</a>'
-            f'<button class="copy-tel button" data-tel="{tel}" style="padding:4px 8px;border-radius:6px;margin-left:6px">Copy</button>'
-        )
-    call_button.short_description = 'Call / Copy'
-
-    class Media:
-        js = ('admin/js/callback_copy.js',)
