@@ -182,7 +182,6 @@ class CallbackRequestAdmin(admin.ModelAdmin):
     list_filter = ('processed', 'created_at')
     search_fields = ('phone', 'name', 'message')
 
-from django.utils.safestring import mark_safe
 
 @admin.register(CallbackRequest)
 class CallbackRequestAdmin(admin.ModelAdmin):
