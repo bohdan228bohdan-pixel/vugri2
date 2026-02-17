@@ -1,3 +1,6 @@
+git config user.email "bohdan228bohdan@gmail.com"
+git config user.name  "
+bohdan228bohdan-pixel"
 {% extends 'base.html' %}
 {% load static %}
 
@@ -8,365 +11,777 @@
 /* Scoped product detail styles - responsive, polished, keeps existing look */
 
 /* Tokens */
-:root{ --muted:#9aa0a6; --white:#ffffff; --accent:#e75b2e; --thumb-size:56px; --radius:12px; }
-#product-detail{ padding:28px 0; color:var(--white); }
-#product-detail .inner{ max-width:1100px; margin:0 auto; padding:0 20px; box-sizing:border-box; }
+:root{
+  --page-max-width:1100px;
+  --muted: #9aa0a6;
+  --white: #ffffff;
+  --accent: #e75b2e;
+  --panel-bg: rgba(255,255,255,0.02);
+  --glass: rgba(255,255,255,0.03);
+  --radius: 12px;
+  --shadow-strong: 0 30px 60px rgba(0,0,0,0.6);
+  --thumb-size:56px;
+}
 
-/* layout */
-.layout{ display:grid; grid-template-columns:1fr 420px; gap:28px; align-items:start; }
-@media (max-width:980px){ .layout{ grid-template-columns:1fr; } }
+/* Container */
+#product-detail { padding: 28px 0; color: var(--white); }
+#product-detail .inner { max-width: var(--page-max-width); margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
 
-/* gallery */
-.gallery-main{ border-radius:var(--radius); overflow:hidden; background:#080808; min-height:320px; position:relative; }
-.gallery-main img, .gallery-main iframe, .gallery-main video{ width:100%; height:420px; object-fit:cover; display:block; border:0; }
-@media (max-width:900px){ .gallery-main img, .gallery-main iframe, .gallery-main video{ height:320px; } }
-.thumbs{ display:flex; gap:10px; padding-top:8px; overflow:auto; -webkit-overflow-scrolling:touch; }
-.thumb{ width:var(--thumb-size); height:var(--thumb-size); border-radius:8px; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; background:rgba(255,255,255,0.02); border:2px solid transparent; }
-.thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
-.thumb.active{ transform:translateY(-3px); border-color:rgba(255,255,255,0.07); }
+/* Two-column layout */
+#product-detail .layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 28px;
+  align-items: start;
+}
+@media (max-width: 980px) {
+  #product-detail .layout { grid-template-columns: 1fr; gap: 18px; }
+}
 
-/* info */
-.info-col{ min-width:280px; max-width:640px; }
-.price{ font-size:28px; font-weight:900; margin:18px 0; color:var(--white); }
-.controls-row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:12px; }
-.qty-input{ width:90px; text-align:center; padding:6px; border-radius:6px; background:rgba(255,255,255,0.03); color:var(--white); border:1px solid rgba(255,255,255,0.04); }
+/* Gallery column */
+.img-col { display:flex; flex-direction:column; gap:12px; align-items:stretch; }
+.gallery-main {
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #080808;
+  box-shadow: var(--shadow-strong);
+  position: relative;
+  min-height: 360px;
+}
+.gallery-main img,
+.gallery-main iframe,
+.gallery-main video {
+  width: 100%;
+  height: 420px;
+  object-fit: cover;
+  display:block;
+  border:0;
+}
+@media (max-width: 900px) { .gallery-main img, .gallery-main iframe, .gallery-main video { height: 320px; } }
 
-/* buttons */
-.btn-add{ padding:10px 18px; border-radius:8px; font-weight:800; background:linear-gradient(90deg,var(--accent), #cc4a20); color:#fff; border:0; cursor:pointer; }
-.btn-outline{ padding:8px 12px; border-radius:8px; background:transparent; color:var(--white); border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
-.btn-fav{ width:44px; height:44px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: var(--white); font-size:18px; cursor:pointer; }
-.btn-fav.favorited{ background:linear-gradient(90deg,#ff4b6b,#ff2b2b); color:#fff; border-color: rgba(255,255,255,0.03); }
+/* badges (top-left) */
+.gallery-badges { position:absolute; left:12px; top:12px; display:flex; gap:8px; z-index:10; }
+.badge { padding:6px 8px; border-radius:8px; font-weight:900; font-size:12px; }
+.badge-hit { background:#8fd19a; color:#07200b; }
+.badge-video { background:#2b6fb2; color:#fff; }
 
-/* reviews & modal */
-.review-card{ background: rgba(255,255,255,0.02); border-radius:10px; padding:12px; margin-bottom:10px; color:var(--muted); }
-.callback-modal{ position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; padding:20px; z-index:2000; }
-.callback-modal-inner{ background:#fff; color:#111; padding:18px; border-radius:8px; width:100%; max-width:540px; box-shadow:0 10px 40px rgba(0,0,0,0.4); }
+/* Thumbnails */
+.thumbs { display:flex; gap:10px; align-items:center; justify-content:flex-start; overflow:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch; }
+.thumbs::-webkit-scrollbar { height:8px; }
+.thumb {
+  flex: 0 0 auto;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
+  border-radius:8px;
+  overflow:hidden;
+  background:var(--panel-bg);
+  border:2px solid transparent;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s;
+}
+.thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.thumb.active { border-color: rgba(255,255,255,0.08); transform:translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.6); }
+.thumb .play-icon { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); color:#fff; background:rgba(0,0,0,0.45); padding:6px;border-radius:6px; font-weight:800; }
+
+/* Info column */
+.info-col { min-width:280px; max-width:640px; }
+#product-title { margin:0 0 8px; font-weight:900; font-size:28px; color:var(--white); }
+.product-meta { color:var(--muted); margin-bottom:12px; line-height:1.5; }
+
+/* Price */
+.price { font-size:28px; font-weight:900; color:var(--white); margin:18px 0; }
+
+/* Controls */
+.controls-row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+.qty-input { width:90px; text-align:center; background:rgba(255,255,255,0.03); color:var(--white); border:1px solid rgba(255,255,255,0.04); padding:6px; border-radius:6px; }
+.btn-add { display:inline-flex; align-items:center; justify-content:center; padding:10px 18px; border-radius:8px; font-weight:800; background: linear-gradient(90deg,var(--accent), #cc4a20); color:#fff; border:0; cursor:pointer; }
+.btn-outline { padding:8px 12px; border-radius:8px; background:transparent; color:var(--white); border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
+.btn-fav { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: var(--white); font-size:18px; cursor:pointer; }
+.btn-fav.favorited { background: linear-gradient(90deg,#ff4b6b,#ff2b2b); color:#fff; border-color: rgba(255,255,255,0.03); }
+
+/* Stock & admin toggle */
+.stock-badge { padding:6px 10px; border-radius:8px; font-weight:700; color:#fff; display:inline-block; }
+.stock-yes { background:#1db954; }
+.stock-no { background:#d9534f; }
+.toggle-stock-btn { padding:8px 12px; border-radius:8px; background:#111; color:var(--accent); border:1px solid rgba(255,255,255,0.04); cursor:pointer; }
+
+/* Reviews */
+#reviews { margin-top:28px; color:var(--muted); max-width:820px; }
+#reviews h3 { color:var(--white); margin-bottom:12px; font-size:1.1rem; }
+.review-card { background: var(--panel-bg); border-radius:10px; padding:12px; margin-bottom:10px; border:1px solid rgba(255,255,255,0.03); }
+.review-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+.review-user { font-weight:800; color:var(--white); }
+.review-time { color:var(--muted); font-size:0.85rem; }
+
+/* Responsive */
+@media (max-width: 640px) {
+  .thumb { width:48px; height:48px; }
+  #product-title { font-size:20px; }
+  .price { font-size:22px; }
+}
 </style>
 {% endblock %}
 
+{% block content %}
+  <div id="product-detail" class="{% if not product.in_stock %}product-out-of-stock{% endif %}">
+    <div class="inner">
+      <div class="layout" role="main" aria-labelledby="product-title">
 
-<!-- ---------- product_details: HTML (вставити в {% block content %}) ---------- -->
-<div id="product-detail">
-  <div class="inner">
-    <div class="layout" role="main" aria-labelledby="product-title">
-
-      <!-- LEFT: gallery -->
-      <div class="img-col">
-        <div class="gallery-main" id="galleryMain" tabindex="0" aria-live="polite">
-          {% if images and images.0.url %}
-            {% if images.0.is_video %}
-              <iframe class="product-iframe" src="{{ images.0.url }}" frameborder="0" allowfullscreen title="Відео {{ product.name }}"></iframe>
-            {% else %}
-              <img id="mainImage" src="{{ images.0.url }}" alt="{{ product.name }}" loading="lazy"
+        <!-- LEFT: Gallery (dynamic) -->
+        <div class="img-col" aria-label="Галерея товару">
+          <div class="gallery-main" id="galleryMain" tabindex="0" aria-live="polite">
+            {# Prefer images list from view (images), else product.image, else placeholder #}
+            {% if images and images.0.url %}
+              {% if images.0.is_video %}
+                <iframe class="product-iframe" src="{{ images.0.url }}" frameborder="0" allowfullscreen title="Відео {{ product.name }}"></iframe>
+              {% else %}
+                <img id="mainImage" src="{{ images.0.url }}" alt="{{ product.name }}" class="product-img"
+                     onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+              {% endif %}
+            {% elif product.image and product.image.url %}
+              <img id="mainImage" src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img"
                    onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
+            {% else %}
+              <img id="mainImage" src="{% static 'images/png/placeholder.png' %}" alt="{{ product.name }}" class="product-img">
             {% endif %}
-          {% elif product.image and product.image.url %}
-            <img id="mainImage" src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy"
-                 onerror="this.onerror=null;this.src='{% static 'images/png/placeholder.png' %}';">
-          {% else %}
-            <img id="mainImage" src="{% static 'images/png/placeholder.png' %}" alt="{{ product.name }}" loading="lazy">
-          {% endif %}
-        </div>
+            <div class="gallery-badges" aria-hidden="true">
+              {% if product.youtube_url %}<span class="badge badge-video">Відео</span>{% endif %}
+              {% if product.is_hit %}<span class="badge badge-hit">Хіт</span>{% endif %}
+            </div>
+          </div>
 
-        <div class="thumbs" id="thumbs" role="tablist" aria-label="Мініатюри">
-          {% if images %}
-            {% for im in images %}
-              {% if im.url %}
-                <div class="thumb{% if forloop.first %} active{% endif %}"
-                     data-type="{% if im.is_video %}video{% else %}image{% endif %}"
-                     data-img-url="{{ im.url }}"
-                     data-video-url="{{ im.url }}"
-                     role="tab"
-                     aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
-                  <img src="{{ im.thumb_url|default:im.url }}" alt="{{ im.alt|default:product.name }}">
+          <div class="thumbs" id="thumbs" aria-hidden="false" role="tablist" aria-label="Мініатюри">
+            {# Build thumbnails from images[] if present; otherwise show fallback single thumb #}
+            {% if images %}
+              {% for im in images %}
+                {% if im.url %}
+                  <div class="thumb{% if forloop.first %} active{% endif %}"
+                       data-type="{% if im.is_video %}video{% else %}image{% endif %}"
+                       data-img-url="{{ im.url }}"
+                       role="tab"
+                       aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                    {% if im.is_video %}
+                      <img src="{{ im.thumb_url|default:im.url }}" alt="{{ im.alt|default:product.name }}">
+                      <span class="play-icon">▶</span>
+                    {% else %}
+                      <img src="{{ im.url }}" alt="{{ im.alt|default:product.name }}">
+                    {% endif %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              {% if product.image and product.image.url %}
+                <div class="thumb active" data-type="image" data-img-url="{{ product.image.url }}">
+                  <img src="{{ product.image.url }}" alt="{{ product.name }}">
+                </div>
+              {% else %}
+                <div class="thumb active" data-type="image" data-img-url="{% static 'images/png/placeholder.png' %}">
+                  <img src="{% static 'images/png/placeholder.png' %}" alt="placeholder">
                 </div>
               {% endif %}
-            {% endfor %}
-          {% else %}
-            {% if product.image and product.image.url %}
-              <div class="thumb active" data-type="image" data-img-url="{{ product.image.url }}"><img src="{{ product.image.url }}" alt="{{ product.name }}"></div>
-            {% else %}
-              <div class="thumb active" data-type="image" data-img-url="{% static 'images/png/placeholder.png' %}"><img src="{% static 'images/png/placeholder.png' %}" alt="placeholder"></div>
             {% endif %}
-          {% endif %}
-        </div>
-      </div>
-
-      <!-- RIGHT: info & controls -->
-      <div class="info-col" aria-labelledby="product-title">
-        <h1 id="product-title">{{ product.name }}</h1>
-        <div class="product-meta" style="color:var(--muted)">{{ product.description }}</div>
-
-        <div class="price">
-          {% if product.sold_in_units %}
-            {% if product.price_per_unit %}
-              <strong>{{ product.price_per_unit|floatformat:2 }} грн / {{ product.unit_label|default:"шт" }}</strong>
-            {% else %} <span>Ціна уточнюється</span> {% endif %}
-          {% elif package_price %}
-            {% if package_size %}
-              <strong>{{ package_price }} грн / {{ package_size }} г</strong>
-            {% else %}
-              <strong>{{ package_price }} грн</strong>
-            {% endif %}
-          {% else %}
-            {% if product.price_per_100g %}
-              <strong>{{ product.price_per_100g|floatformat:2 }} грн / 100г</strong>
-            {% else %} <span>Ціна уточнюється</span> {% endif %}
-          {% endif %}
-        </div>
-
-        <div class="controls-row" role="group" aria-label="Дії з товаром">
-          <div style="display:flex;align-items:center;gap:8px">
-            <button id="qty-decr" class="btn-outline" type="button" aria-label="зменшити">−</button>
-            <input id="qty" class="qty-input" type="number" value="1" min="1" step="1" aria-label="кількість" />
-            <button id="qty-incr" class="btn-outline" type="button" aria-label="збільшити">+</button>
-
-            <button id="requestCallbackBtn" class="btn-outline" data-product-id="{{ product.id }}" data-product-name="{{ product.name }}">
-              Замовити зворотній зв'язок
-            </button>
-          </div>
-
-          <div style="display:flex;gap:10px;align-items:center">
-            {% if user.is_authenticated %}
-              <button id="addToCart" class="btn-add" data-product-id="{{ product.id }}" {% if not product.in_stock %}disabled title="Товар тимчасово відсутній"{% endif %}>
-                {% if product.in_stock %}До кошика{% else %}Немає в наявності{% endif %}
-              </button>
-            {% else %}
-              <a href="{% url 'login' %}?next={{ request.path }}" class="btn-add">Увійти, щоб купити</a>
-            {% endif %}
-
-            <button id="favBtn" class="btn-fav {% if is_favorited %}favorited{% endif %}" data-product-id="{{ product.id }}" aria-pressed="{% if is_favorited %}true{% else %}false{% endif %}" title="Додати до обраного">
-              <span id="favIcon">{% if is_favorited %}❤️{% else %}🤍{% endif %}</span>
-            </button>
           </div>
         </div>
 
-        <div style="margin-top:12px;display:flex;gap:12px;align-items:center">
-          {% if product.in_stock %}
-            <span id="stockBadge" class="stock-badge stock-yes">В наявності</span>
-          {% else %}
-            <span id="stockBadge" class="stock-badge stock-no">Немає в наявності</span>
-          {% endif %}
-          {% if user.is_staff %}
-            <button id="toggleStockBtn" data-product-id="{{ product.id }}" class="btn-outline" style="margin-left:12px;">{% if product.in_stock %}Поставити як «немає в наявності»{% else %}Повернути в наявність{% endif %}</button>
-          {% endif %}
-        </div>
+        <!-- RIGHT: Info & Controls -->
+        <div class="info-col" aria-labelledby="product-title">
+          <h1 id="product-title">{{ product.name }}</h1>
 
-        <hr style="border-color:rgba(255,255,255,0.04); margin-top:16px">
+          <div class="product-meta">{{ product.description }}</div>
 
-        <h4 style="color:var(--white)">Опис</h4>
-        <p style="color:var(--muted)">{{ product.description }}</p>
-      </div>
-    </div>
-
-    <!-- REVIEWS -->
-    <section id="reviews" style="margin-top:28px;">
-      <h3 id="reviews-heading">Відгуки{% if average_rating %} — середній рейтинг: {{ average_rating }}{% endif %}</h3>
-
-      {% if user.is_authenticated %}
-        <form id="reviewForm" method="post" onsubmit="return false;">
-          {% csrf_token %}
-          <label style="color:var(--muted)">Рейтинг:
-            <select name="rating" id="reviewRating">
-              <option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option>
-            </select>
-          </label>
-          <div style="margin-top:8px;">
-            <textarea name="comment" id="reviewComment" rows="3" style="width:100%;background:rgba(255,255,255,0.03);color:var(--white);border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:6px;" placeholder="Напишіть свій відгук (необов'язково)"></textarea>
-          </div>
-          <div style="margin-top:8px;">
-            <button id="submitReviewBtn" class="btn-outline" type="button">Надіслати відгук</button>
-          </div>
-          <div id="reviewMsg" style="margin-top:8px;color:var(--muted)"></div>
-        </form>
-      {% else %}
-        <p style="color:var(--muted)">Щоб залишити відгук, будь-ласка <a href="{% url 'login' %}?next={{ request.path }}">увійдіть</a>.</p>
-      {% endif %}
-
-      <div id="reviewsList" style="margin-top:12px;">
-        {% if reviews %}
-          {% for r in reviews %}
-            <div id="review-{{ r.id }}" class="review-card" role="article">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                  <div style="font-weight:700;color:var(--white)">{{ r.user.username }}</div>
-                  <div style="color:var(--muted);font-size:0.85rem">{{ r.created_at|date:"SHORT_DATETIME_FORMAT" }}</div>
-                </div>
-                {% if user.is_authenticated and user.username == 'VugriUa' %}
-                  <button type="button" class="delete-review-btn btn-outline" data-review-id="{{ r.id }}" data-delete-url="{% url 'delete_review' r.id %}">Видалити</button>
-                {% endif %}
-              </div>
-              {% if r.comment %}<div style="margin-top:8px;color:var(--muted)">{{ r.comment }}</div>{% endif %}
-            </div>
-          {% endfor %}
-        {% else %}
-          <p style="color:var(--muted)">Поки що немає відгуків — будьте першим.</p>
-        {% endif %}
-      </div>
-    </section>
-  </div>
+<!-- НОВИЙ БЛОК: підтримка продажу в штуках або в грамах -->
+<div class="price">
+  {% if product.sold_in_units %}
+    {% if product.price_per_unit %}
+      <strong>{{ product.price_per_unit|floatformat:2 }} грн / 1 {{ product.unit_label|default:"шт" }}</strong>
+    {% else %}
+      <span>Ціна уточнюється</span>
+    {% endif %}
+  {% elif package_price %}
+    {# Для сторінки товару view може передавати package_price/package_size або атрибути product.package_size_grams #}
+    {% if package_size %}
+      <strong>{{ package_price }} грн / {{ package_size }} г</strong>
+    {% elif product.package_size_grams %}
+      <strong>{{ product.compute_package_price|default:product.package_price_display }} грн / {{ product.package_size_grams }} г</strong>
+    {% elif product.package_size %}
+      <strong>{{ product.package_price_display }} грн / {{ product.package_size }} г</strong>
+    {% else %}
+      <strong>1 шт — {{ package_price|default:product.package_price_display }}</strong>
+    {% endif %}
+  {% else %}
+    {% if product.price_per_100g %}
+      <strong>{{ product.price_per_100g|floatformat:2 }} грн / 100г</strong>
+    {% else %}
+      <span>Ціна уточнюється</span>
+    {% endif %}
+  {% endif %}
 </div>
 
-<!-- CALLBACK modal -->
+<!-- КІНЕЦЬ НОВОГО БЛОКУ -->
+
+          <div class="controls-row" role="group" aria-label="Дії з товаром">
+            <div style="display:flex;align-items:center;gap:8px">
+              <button id="qty-decr" class="btn-outline" type="button" aria-label="зменшити">−</button>
+              <input id="qty" class="qty-input" type="number" value="1" min="1" step="1" aria-label="кількість" />
+              <button id="qty-incr" class="btn-outline" type="button" aria-label="збільшити">+</button>
+              <button id="requestCallbackBtn" class="btn btn-outline"
+        data-product-id="{{ product.id }}" data-product-name="{{ product.name }}">
+  Замовити зворотній зв'язок
+              </button>
+            </div>
+
+            <div style="display:flex;gap:10px;align-items:center">
+              {% if user.is_authenticated %}
+                <button id="addToCart" class="btn-add" data-product-id="{{ product.id }}"
+                  {% if not product.in_stock %}disabled title="Товар тимчасово відсутній"{% endif %}>
+                  {% if product.in_stock %}До кошика{% else %}Немає в наявності{% endif %}
+                </button>
+              {% else %}
+                <a href="{% url 'login' %}?next={{ request.path }}" class="btn-add">Увійти, щоб купити</a>
+              {% endif %}
+
+              <button id="favBtn" class="btn-fav {% if is_favorited %}favorited{% endif %}" data-product-id="{{ product.id }}" title="Додати до обраного" aria-pressed="{% if is_favorited %}true{% else %}false{% endif %}">
+                <span id="favIcon">{% if is_favorited %}❤️{% else %}🤍{% endif %}</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-top:12px;">
+            {% if product.in_stock %}
+              <span id="stockBadge" class="stock-badge stock-yes">В наявності</span>
+            {% else %}
+              <span id="stockBadge" class="stock-badge stock-no">Немає в наявності</span>
+            {% endif %}
+
+            {% if user.is_staff %}
+              <button id="toggleStockBtn" data-product-id="{{ product.id }}" class="toggle-stock-btn">
+                {% if product.in_stock %}Поставити як «немає в наявності»{% else %}Повернути в наявність{% endif %}
+              </button>
+            {% endif %}
+          </div>
+
+          <div id="product-msg" aria-live="polite" style="margin-top:12px;color:var(--muted)"></div>
+
+          <hr style="border-color: rgba(255,255,255,0.04); margin-top:16px">
+
+          <h4 style="color:var(--white)">Опис</h4>
+          <p style="color:var(--muted)">{{ product.description }}</p>
+        </div>
+      </div>
+
+      <!-- REVIEWS -->
+            <section id="reviews" aria-labelledby="reviews-heading" style="margin-top:28px;">
+        <h3 id="reviews-heading" style="color:var(--white)">Відгуки{% if average_rating %} — середній рейтинг: {{ average_rating }}{% endif %}</h3>
+
+        {% if user.is_authenticated %}
+          <form id="reviewForm" method="post" style="margin-top:12px;" onsubmit="return false;">
+            {% csrf_token %}
+            <label style="color:var(--muted)">Рейтинг:
+              <select name="rating" id="reviewRating">
+                <option value="5">5</option>
+                <option value="4">4</option>
+                <option value="3">3</option>
+                <option value="2">2</option>
+                <option value="1">1</option>
+              </select>
+            </label>
+            <div style="margin-top:8px;">
+              <textarea name="comment" id="reviewComment" rows="3" style="width:100%;background:rgba(255,255,255,0.03);color:var(--white);border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:6px;" placeholder="Напишіть свій відгук (необов'язково)"></textarea>
+            </div>
+            <div style="margin-top:8px;">
+              <button id="submitReviewBtn" class="btn-outline" type="button">Надіслати відгук</button>
+            </div>
+            <div id="reviewMsg" style="margin-top:8px;color:var(--muted)"></div>
+          </form>
+        {% else %}
+          <p style="color:var(--muted)">Щоб залишити відгук, будь-ласка <a href="{% url 'login' %}?next={{ request.path }}">увійдіть</a>.</p>
+        {% endif %}
+
+        <div id="reviewsList" style="margin-top:18px;">
+          {% if reviews %}
+            {% for r in reviews %}
+              <div id="review-{{ r.id }}" class="review-card" role="article" aria-label="Відгук від {{ r.user.username }}" style="position:relative;padding:12px;border-bottom:1px solid rgba(255,255,255,0.03);margin-bottom:8px;">
+                <div class="review-head" style="display:flex;justify-content:space-between;align-items:center;">
+                  <div>
+                    <div class="review-user" style="font-weight:700;color:#fff">{{ r.user.username }}</div>
+                    <div class="review-time" style="color:var(--muted);font-size:13px">{{ r.created_at|date:"SHORT_DATETIME_FORMAT" }}</div>
+                  </div>
+
+                  {# Delete button for VugriUa only (visible in UI only for that account) #}
+                  {% if user.is_authenticated and user.username == 'VugriUa' %}
+                    <div style="margin-left:12px;">
+                      <button
+                        type="button"
+                        class="delete-review-btn btn-outline"
+                        data-review-id="{{ r.id }}"
+                        data-delete-url="{% url 'delete_review' r.id %}"
+                        style="padding:6px 10px;border-radius:6px;"
+                        title="Видалити відгук">
+                        Видалити
+                      </button>
+                    </div>
+                  {% endif %}
+                </div>
+
+                <div style="margin-top:8px;color:var(--muted)">Рейтинг: {{ r.rating }} / 5</div>
+                {% if r.comment %}
+                  <div style="margin-top:8px;color:var(--muted)">{{ r.comment }}</div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <p style="color:var(--muted)">Поки що немає відгуків — будьте першим.</p>
+          {% endif %}
+        </div>
+      </section>
+
+
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Helper селектори
+  function q(sel, ctx=document){ return ctx.querySelector(sel); }
+  function qa(sel, ctx=document){ return Array.from((ctx || document).querySelectorAll(sel)); }
+
+  // CSRF helper
+  function getCookie(name){
+    const v = document.cookie.split('; ').find(c=>c.trim().startsWith(name+'='));
+    return v ? decodeURIComponent(v.split('=')[1]) : null;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  // Elements (flexible: support both mediaContainer and galleryMain)
+  const mediaContainer = q('#mediaContainer') || q('#galleryMain') || q('.gallery-main');
+  const thumbsWrap = q('#thumbs') || q('#galleryThumbs') || q('.thumbs');
+
+  // Other controls (unchanged)
+  const qtyInput = q('#qty');
+  const qtyIncr = q('#qty-incr');
+  const qtyDecr = q('#qty-decr');
+  const addBtn = q('#addToCart');
+  const favBtn = q('#favBtn');
+  const favIcon = q('#favIcon');
+  const submitBtn = q('#submitReviewBtn');
+  const reviewMsgEl = q('#reviewMsg');
+  const toggleBtn = q('#toggleStockBtn');
+  const stockBadge = q('#stockBadge');
+
+  // Quantity handlers
+  if (qtyIncr && qtyDecr && qtyInput) {
+    qtyIncr.addEventListener('click', ()=> qtyInput.value = Math.max(1, parseInt(qtyInput.value||1) + 1));
+    qtyDecr.addEventListener('click', ()=> qtyInput.value = Math.max(1, parseInt(qtyInput.value||1) - 1));
+  }
+
+  // ------- Gallery handling (robust) -------
+  if (mediaContainer && thumbsWrap) {
+    // find thumbnail items (support .thumb and .thumb-btn fallbacks)
+    const thumbs = qa('.thumb, .thumb-btn', thumbsWrap);
+
+    // Ensure at least one active thumb
+    if (thumbs.length && !thumbs.some(t => t.classList.contains('active'))) thumbs[0].classList.add('active');
+
+    // safe extract youtube id
+    function extractYouTubeId(url){
+      if(!url) return null;
+      const patterns = [
+        /(?:v=)([0-9A-Za-z_-]{11})/,
+        /(?:embed\/)([0-9A-Za-z_-]{11})/,
+        /(?:youtu\.be\/)([0-9A-Za-z_-]{11})/,
+        /(?:shorts\/)([0-9A-Za-z_-]{11})/
+      ];
+      for(const re of patterns){
+        const m = url.match(re);
+        if(m && m[1]) return m[1];
+      }
+      const any = url.match(/([0-9A-Za-z_-]{11})/);
+      return any ? any[1] : null;
+    }
+
+    // show image in main container
+    function showImage(src, alt){
+      try {
+        mediaContainer.innerHTML = '';
+        const img = document.createElement('img');
+        img.className = 'product-img';
+        img.src = src;
+        img.alt = alt || '';
+        img.loading = 'lazy';
+        img.onerror = function(){ this.onerror=null; this.src = '{% static "images/png/placeholder.png" %}'; };
+        mediaContainer.appendChild(img);
+      } catch(e) { console.error('showImage error', e); }
+    }
+
+    // show embedded iframe (use only when you know embed is allowed)
+    function embedYouTube(vid){
+      try {
+        mediaContainer.innerHTML = '';
+        const iframe = document.createElement('iframe');
+        iframe.className = 'product-iframe';
+        iframe.src = 'https://www.youtube.com/embed/' + vid + '?rel=0&modestbranding=1';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        iframe.allowFullscreen = true;
+        iframe.frameBorder = 0;
+        mediaContainer.appendChild(iframe);
+      } catch(e){ console.error('embedYouTube error', e); window.open('https://youtu.be/' + vid, '_blank'); }
+    }
+
+    // fallback: open YouTube (safe when embedding is disallowed)
+    function openYouTube(vid){
+      window.open('https://youtu.be/' + vid, '_blank');
+    }
+
+    // Decide what to do when video thumb clicked.
+    // DEFAULT_BEHAVIOR = 'open' -> open youtube in new tab (safe)
+    // set to 'embed' to attempt inline embed (may show player error if owner disallows embedding)
+    const DEFAULT_VIDEO_BEHAVIOR = 'open'; // 'open' or 'embed'
+
+    function handleVideoClick(url){
+      const vid = extractYouTubeId(url);
+      if(!vid){ window.open(url || '#', '_blank'); return; }
+      if (DEFAULT_VIDEO_BEHAVIOR === 'embed') embedYouTube(vid);
+      else openYouTube(vid);
+    }
+
+    // Attach handlers to thumbs
+    thumbs.forEach(function(t){
+      t.tabIndex = t.tabIndex || 0; // make focusable
+      t.addEventListener('click', function(e){
+        e.preventDefault();
+        // read dataset keys flexibly
+        const type = (t.dataset.type || t.getAttribute('data-type') || 'image').toLowerCase();
+        const imgUrl = t.dataset.imgUrl || t.getAttribute('data-img-url') || t.dataset.src || t.getAttribute('data-src');
+        const videoUrl = t.dataset.videoUrl || t.getAttribute('data-video-url') || t.dataset.src || t.getAttribute('data-src');
+
+        // update active state
+        thumbs.forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+
+        if (type === 'video') {
+          handleVideoClick(videoUrl || imgUrl);
+        } else {
+          if (imgUrl) showImage(imgUrl, t.getAttribute('alt') || '');
+        }
+      });
+
+      // keyboard accessibility: Enter / Space activates
+      t.addEventListener('keydown', function(e){
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); }
+      });
+    });
+
+    // If initial main is placeholder and first thumb exists, show first thumb content
+    try {
+      const mainHasImg = !!(mediaContainer.querySelector && mediaContainer.querySelector('img, iframe, video'));
+      if(!mainHasImg && thumbs.length){
+        const first = thumbs[0];
+        const type = (first.dataset.type || first.getAttribute('data-type') || 'image').toLowerCase();
+        const imgUrl = first.dataset.imgUrl || first.getAttribute('data-img-url') || first.dataset.src || first.getAttribute('data-src');
+        const videoUrl = first.dataset.videoUrl || first.getAttribute('data-video-url') || first.dataset.src || first.getAttribute('data-src');
+        if(type === 'video') handleVideoClick(videoUrl || imgUrl);
+        else if(imgUrl) showImage(imgUrl, first.getAttribute('alt') || '');
+      }
+    } catch(e){ /* non-critical */ }
+  } // end gallery
+
+  // ------- Add to cart (unchanged behaviour, robustified) -------
+if (addBtn) {
+  addBtn.addEventListener('click', async function(){
+    const pid = this.dataset.productId;
+    const qty = Math.max(1, parseInt(qtyInput.value || 1));
+    const data = new URLSearchParams();
+    data.append('product_id', pid);
+    data.append('quantity', qty);
+    data.append('currency', 'UAH');
+    const currentImg = mediaContainer && mediaContainer.querySelector('img') ? mediaContainer.querySelector('img').src : '{% static "images/png/placeholder.png" %}';
+    data.append('image', currentImg);
+    data.append('name', '{{ product.name|escapejs }}');
+
+    this.disabled = true;
+    const origText = this.textContent;
+    this.textContent = 'Додаю...';
+
+    try {
+      const res = await fetch("{% url 'add_to_cart' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest'},
+        body: data,
+        credentials: 'same-origin'
+      });
+
+      // Безпечне читання відповіді
+      const ct = res.headers.get('content-type') || '';
+      let json = null;
+      if (ct.includes('application/json')) {
+        try {
+          json = await res.json();
+        } catch (e) {
+          const text = await res.text();
+          console.error('Invalid JSON response:', text);
+          alert('Сервер повернув некоректну JSON відповідь. Подивіться консоль.');
+          return;
+        }
+      } else {
+        // Сервер не повернув JSON — покажемо текст для діагностики
+        const text = await res.text();
+        console.error('Non-JSON response from add_to_cart:', text);
+        alert('Помилка: сервер повернув неочікуваний формат відповіді. Перевірте консоль Network/Response.');
+        return;
+      }
+
+      // Тепер обробляємо JSON
+      if (!res.ok) {
+        if (json && json.login_url) { window.location.href = json.login_url + '&next=' + encodeURIComponent(window.location.pathname); return; }
+        q('#product-msg').textContent = json.error || ('Помилка: ' + res.status);
+      } else {
+        if (json.ok) {
+          q('#product-msg').textContent = 'Додано в кошик';
+          qa('#cart-count').forEach(el => el.textContent = json.cart_count);
+        } else {
+          q('#product-msg').textContent = json.error || 'Помилка';
+        }
+      }
+    } catch (err) {
+      console.error('Network error:', err);
+      q('#product-msg').textContent = 'Помилка мережі';
+    } finally {
+      this.disabled = false;
+      this.textContent = origText;
+    }
+  });
+}
+
+  // ------- Favorite, Review, Toggle availability (kept as in your code) -------
+  if (favBtn) {
+    favBtn.addEventListener('click', async function(){
+      const pid = this.dataset.productId;
+      if(!pid) return;
+      this.disabled = true;
+      try{
+        const res = await fetch("{% url 'toggle_favorite' %}", {
+          method:'POST',
+          headers: {'X-CSRFToken': csrftoken, 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With':'XMLHttpRequest'},
+          body: new URLSearchParams({product_id: pid}),
+          credentials: 'same-origin'
+        });
+        const json = await res.json().catch(()=>({ok:false}));
+        if(!res.ok && json && json.login_url){ window.location = json.login_url + '&next=' + encodeURIComponent(window.location.pathname); return; }
+        if(json.ok){
+          if(json.favorited){ favBtn.classList.add('favorited'); if(favIcon) favIcon.textContent='❤️'; favBtn.setAttribute('aria-pressed','true'); }
+          else { favBtn.classList.remove('favorited'); if(favIcon) favIcon.textContent='🤍'; favBtn.setAttribute('aria-pressed','false'); }
+        } else alert(json.error || 'Не вдалося оновити обране');
+      } catch(e){ console.error(e); alert('Помилка мережі'); }
+      finally{ favBtn.disabled = false; }
+    });
+  }
+
+  if (submitBtn) {
+    submitBtn.addEventListener('click', async function(){
+      const rating = q('#reviewRating') ? q('#reviewRating').value : '5';
+      const comment = q('#reviewComment') ? q('#reviewComment').value.trim() : '';
+      submitBtn.disabled = true;
+      const orig = submitBtn.textContent;
+      submitBtn.textContent = 'Надсилаю...';
+      reviewMsgEl.textContent = '';
+      try{
+        const res = await fetch("{% url 'submit_review' product.id %}", {
+          method:'POST',
+          headers:{ 'X-CSRFToken': csrftoken, 'Content-Type':'application/x-www-form-urlencoded', 'X-Requested-With':'XMLHttpRequest' },
+          body: new URLSearchParams({ rating: rating, comment: comment }),
+          credentials: 'same-origin'
+        });
+        const json = await res.json();
+        if(!res.ok){ if(json && json.login_url){ window.location = json.login_url + '&next=' + encodeURIComponent(window.location.pathname); return; } reviewMsgEl.style.color='#ff8a8a'; reviewMsgEl.textContent = json.error || ('Помилка: ' + res.status); }
+        else { if(json.ok){ reviewMsgEl.style.color='lightgreen'; reviewMsgEl.textContent = json.message || 'Дякуємо за відгук.'; setTimeout(()=> location.reload(), 800); } else { reviewMsgEl.style.color='#ff8a8a'; reviewMsgEl.textContent = json.error || 'Не вдалося додати відгук.'; } }
+      } catch(e){ console.error(e); reviewMsgEl.style.color='#ff8080'; reviewMsgEl.textContent='Помилка мережі'; }
+      finally{ submitBtn.disabled = false; submitBtn.textContent = orig; }
+    });
+  }
+
+  if (toggleBtn){
+    toggleBtn.addEventListener('click', async function(){
+      if(!confirm('Підтвердити зміну доступності товару?')) return;
+      const pid = this.dataset.productId;
+      const base = "{% url 'toggle_availability' 0 %}";
+      const url = base.replace('/0/', '/' + pid + '/');
+      try{
+        const res = await fetch(url, { method:'POST', headers:{ 'X-CSRFToken': csrftoken, 'X-Requested-With':'XMLHttpRequest' }, credentials:'same-origin' });
+        if(!res.ok) throw new Error('network');
+        const js = await res.json();
+        if(js.ok){
+          if(js.in_stock){ stockBadge.textContent='В наявності'; stockBadge.classList.remove('stock-no'); stockBadge.classList.add('stock-yes'); toggleBtn.textContent='Поставити як «немає в наявності»'; }
+          else { stockBadge.textContent='Немає в наявності'; stockBadge.classList.remove('stock-yes'); stockBadge.classList.add('stock-no'); toggleBtn.textContent='Повернути в наявність'; }
+        } else alert('Не вдалося змінити статус');
+      }catch(e){ console.error(e); alert('Помилка мережі або прав доступу.'); }
+    });
+  }
+
+}); // DOMContentLoaded
+        function getCookie(name) {
+          const v = document.cookie.split('; ').find(c => c.trim().startsWith(name + '='));
+          return v ? decodeURIComponent(v.split('=')[1]) : null;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // Attach AJAX delete handlers to buttons rendered for VugriUa
+        document.querySelectorAll('.delete-review-btn').forEach(btn => {
+          btn.addEventListener('click', async function (e) {
+            e.preventDefault();
+            if (!confirm('Видалити цей відгук?')) return;
+            const reviewId = this.dataset.reviewId;
+            const url = this.dataset.deleteUrl;
+            this.disabled = true;
+            const origText = this.textContent;
+            this.textContent = 'Видаляю...';
+            try {
+              const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                  'X-CSRFToken': csrftoken,
+                  'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+              });
+              if (res.ok) {
+                const json = await res.json().catch(() => null);
+                if (json && json.ok) {
+                  // remove element from DOM
+                  const el = document.getElementById('review-' + reviewId);
+                  if (el) el.remove();
+                } else {
+                  alert((json && json.error) ? json.error : 'Не вдалося видалити відгук.');
+                  this.disabled = false;
+                  this.textContent = origText;
+                }
+              } else {
+                if (res.status === 403) alert('Недостатньо прав для видалення.');
+                else alert('Помилка сервера: ' + res.status);
+                this.disabled = false;
+                this.textContent = origText;
+              }
+            } catch (err) {
+              console.error(err);
+              alert('Помилка мережі — спробуйте пізніше.');
+              this.disabled = false;
+              this.textContent = origText;
+            }
+          });
+        });
+</script>
+
+<!-- CALLBACK modal (insert before the template's {% endblock %}) -->
 <div id="callbackModal" class="callback-modal" style="display:none;">
   <div class="callback-modal-inner" role="dialog" aria-modal="true" aria-labelledby="cbTitle">
     <h3 id="cbTitle">Замовити зворотній зв'язок</h3>
     <form id="callbackForm" method="post">
       {% csrf_token %}
       <input type="hidden" name="product" id="cb_product" value="{{ product.id }}">
-      <div><label>Телефон *</label><input type="text" name="phone" id="cb_phone" placeholder="+380XXXXXXXXX" required></div>
-      <div style="margin-top:8px;"><label>Ім'я</label><input type="text" name="name" id="cb_name"></div>
-      <div style="margin-top:10px;"><button type="submit" id="cbSendBtn" class="btn btn-primary">Надіслати</button> <button type="button" id="cbCancel" class="btn-outline">Скасувати</button></div>
+      <div>
+        <label>Телефон *</label>
+        <input type="text" name="phone" id="cb_phone" placeholder="+380XXXXXXXXX" required>
+      </div>
+      <div>
+        <label>Ім'я</label>
+        <input type="text" name="name" id="cb_name" placeholder="Ваше ім'я (необов'язково)">
+      </div>
+      <div>
+        <label>Зручний час</label>
+        <input type="text" name="preferred_time" id="cb_time" placeholder="Наприклад: завтра після 18:00">
+      </div>
+      <div>
+        <label>Повідомлення</label>
+        <textarea name="message" id="cb_message" rows="3" placeholder="Коротко опишіть запит"></textarea>
+      </div>
+
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+        <button type="submit" class="btn btn-primary" id="cbSendBtn">Надіслати</button>
+        <button type="button" class="btn btn-outline" id="cbCancel">Скасувати</button>
+        <a href="tel:+380986666466" class="btn btn-outline" style="margin-left:auto">Подзвонити</a>
+      </div>
+
       <div id="cbResult" style="margin-top:10px;display:none;"></div>
     </form>
   </div>
 </div>
-{% endblock %}
 
+<style>
+.callback-modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px; }
+.callback-modal-inner { background:#fff; color:#111; padding:18px; border-radius:8px; width:100%; max-width:540px; box-shadow:0 10px 40px rgba(0,0,0,0.4); }
+.callback-modal input, .callback-modal textarea { width:100%; padding:8px; margin-top:6px; border:1px solid #ddd; border-radius:6px; }
+</style>
 
-<!-- ---------- product_details: scripts (вставити в {% block scripts %}) ---------- -->
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  // helpers
-  const q = (sel, ctx=document) => ctx.querySelector(sel);
-  const qa = (sel, ctx=document) => Array.from((ctx||document).querySelectorAll(sel));
-  const getCookie = (name) => { const v = document.cookie.split('; ').find(c=>c.trim().startsWith(name+'=')); return v ? decodeURIComponent(v.split('=')[1]) : null; };
-  const csrftoken = getCookie('csrftoken');
+(function(){
+  const openBtn = document.getElementById('requestCallbackBtn');
+  const modal = document.getElementById('callbackModal');
+  const cancelBtn = document.getElementById('cbCancel');
+  const form = document.getElementById('callbackForm');
+  const resultBox = document.getElementById('cbResult');
+  const sendBtn = document.getElementById('cbSendBtn');
 
-  // gallery
-  const mediaContainer = q('#galleryMain');
-  const thumbs = qa('.thumb');
-  const showImage = (src, alt='') => {
-    if(!mediaContainer) return;
-    mediaContainer.innerHTML = '';
-    const img = document.createElement('img');
-    img.className='product-img';
-    img.src = src;
-    img.alt = alt;
-    img.loading = 'lazy';
-    img.onerror = function(){ this.onerror=null; this.src = '{% static "images/png/placeholder.png" %}'; };
-    mediaContainer.appendChild(img);
-  };
+  if (!openBtn || !modal || !form) return;
 
-  thumbs.forEach(t => {
-    t.addEventListener('click', function(e){
-      e.preventDefault();
-      thumbs.forEach(x=>x.classList.remove('active'));
-      this.classList.add('active');
-      const type = (this.dataset.type||'image').toLowerCase();
-      const imgUrl = this.dataset.imgUrl || this.getAttribute('data-img-url');
-      const videoUrl = this.dataset.videoUrl || this.getAttribute('data-video-url');
-      if(type==='video'){ const url = videoUrl || imgUrl; if(url) window.open(url,'_blank'); }
-      else if(imgUrl){ showImage(imgUrl); }
-    });
-    t.addEventListener('keydown', (e) => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); t.click(); } });
+  function openModal(productId){
+    const hid = modal.querySelector('#cb_product');
+    if (hid && productId) hid.value = productId;
+    resultBox.style.display = 'none';
+    modal.style.display = 'flex';
+  }
+  function closeModal(){ modal.style.display = 'none'; }
+
+  openBtn.addEventListener('click', function(e){
+    e.preventDefault();
+    openModal(this.dataset.productId || '{{ product.id }}');
+  });
+  cancelBtn.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
+
+  function getCsrfToken(){
+    const el = form.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+  }
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    sendBtn.disabled = true;
+    resultBox.style.display = 'none';
+    const data = new FormData(form);
+
+    fetch("{% url 'request_callback' %}", {
+      method: "POST",
+      headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
+      body: data,
+      credentials: 'same-origin'
+    }).then(async res => {
+      const json = await res.json().catch(()=>null);
+      if (res.ok && json && json.ok){
+        resultBox.style.color = 'green';
+        resultBox.textContent = json.message || 'Дякуємо! Ми зателефонуємо.';
+        resultBox.style.display = 'block';
+        form.reset();
+        setTimeout(closeModal, 1700);
+      } else {
+        resultBox.style.color = 'red';
+        resultBox.textContent = (json && (json.error || JSON.stringify(json.errors))) || 'Помилка відправки';
+        resultBox.style.display = 'block';
+      }
+    }).catch(err=>{
+      resultBox.style.color = 'red';
+      resultBox.textContent = 'Помилка мережі. Спробуйте пізніше.';
+      resultBox.style.display = 'block';
+      console.error(err);
+    }).finally(()=>{ sendBtn.disabled = false; });
   });
 
-  // qty controls
-  const qty = q('#qty'), inc = q('#qty-incr'), dec = q('#qty-decr');
-  if(inc && dec && qty){ inc.addEventListener('click', ()=> qty.value = Math.max(1, parseInt(qty.value||1) + 1)); dec.addEventListener('click', ()=> qty.value = Math.max(1, parseInt(qty.value||1) - 1)); }
-
-  // add to cart
-  const addBtn = q('#addToCart');
-  if(addBtn){
-    addBtn.addEventListener('click', async function(){
-      const pid = this.dataset.productId;
-      const quantity = Math.max(1, parseInt(q('#qty')?.value||1));
-      const data = new URLSearchParams({ product_id: pid, quantity });
-      try {
-        const res = await fetch("{% url 'add_to_cart' %}", { method: 'POST', headers: { 'X-CSRFToken': csrftoken, 'X-Requested-With':'XMLHttpRequest' }, body: data, credentials: 'same-origin' });
-        const json = await res.json().catch(()=>null);
-        if(res.ok && json && json.ok){ alert('Додано в кошик'); if(json.cart_count) qa('#cart-count').forEach(el=>el.textContent=json.cart_count); }
-        else if(json && json.login_url){ window.location = json.login_url + '&next=' + encodeURIComponent(window.location.pathname); }
-        else alert(json?.error || 'Помилка при додаванні в кошик');
-      } catch(e){ console.error(e); alert('Помилка мережі'); }
-    });
-  }
-
-  // toggle favorite
-  const favBtn = q('#favBtn'), favIcon = q('#favIcon');
-  if(favBtn){
-    favBtn.addEventListener('click', async function(){
-      const pid = this.dataset.productId;
-      try {
-        const res = await fetch("{% url 'toggle_favorite' %}", { method:'POST', headers:{ 'X-CSRFToken': csrftoken, 'X-Requested-With':'XMLHttpRequest' }, body: new URLSearchParams({product_id: pid}), credentials:'same-origin' });
-        const json = await res.json().catch(()=>null);
-        if(res.ok && json && json.ok){
-          if(json.favorited){ favBtn.classList.add('favorited'); if(favIcon) favIcon.textContent='❤️'; favBtn.setAttribute('aria-pressed','true'); }
-          else { favBtn.classList.remove('favorited'); if(favIcon) favIcon.textContent='🤍'; favBtn.setAttribute('aria-pressed','false'); }
-        } else if(json && json.login_url) { window.location = json.login_url + '&next=' + encodeURIComponent(window.location.pathname); }
-      } catch(e){ console.error(e); alert('Помилка мережі'); }
-    });
-  }
-
-  // submit review
-  const submitBtn = q('#submitReviewBtn'), reviewMsgEl = q('#reviewMsg');
-  if(submitBtn){
-    submitBtn.addEventListener('click', async function(){
-      const rating = q('#reviewRating')?.value || '5';
-      const comment = q('#reviewComment')?.value || '';
-      try {
-        const res = await fetch("{% url 'submit_review' product.id %}", { method:'POST', headers:{ 'X-CSRFToken': csrftoken, 'X-Requested-With':'XMLHttpRequest' }, body: new URLSearchParams({ rating, comment }), credentials:'same-origin' });
-        const json = await res.json().catch(()=>null);
-        if(res.ok && json && json.ok){ reviewMsgEl.style.color='lightgreen'; reviewMsgEl.textContent = json.message || 'Дякуємо'; setTimeout(()=>location.reload(),700); }
-        else if(json && json.login_url){ window.location = json.login_url + '&next=' + encodeURIComponent(window.location.pathname); }
-        else { reviewMsgEl.style.color='#ff8a8a'; reviewMsgEl.textContent = json?.error || 'Помилка'; }
-      } catch(e){ console.error(e); reviewMsgEl.style.color='#ff8080'; reviewMsgEl.textContent='Помилка мережі'; }
-    });
-  }
-
-  // toggle availability (admin)
-  const toggleBtn = q('#toggleStockBtn'), stockBadge = q('#stockBadge');
-  if(toggleBtn){
-    toggleBtn.addEventListener('click', async function(){
-      if(!confirm('Підтвердити зміну доступності товару?')) return;
-      const pid = this.dataset.productId;
-      const base = "{% url 'toggle_availability' 0 %}";
-      const url = base.replace('/0/', '/' + pid + '/');
-      try {
-        const res = await fetch(url, { method:'POST', headers:{ 'X-CSRFToken': csrftoken, 'X-Requested-With':'XMLHttpRequest' }, credentials:'same-origin' });
-        const json = await res.json().catch(()=>null);
-        if(res.ok && json && json.ok){
-          if(json.in_stock){ if(stockBadge){ stockBadge.textContent='В наявності'; stockBadge.classList.remove('stock-no'); stockBadge.classList.add('stock-yes'); } toggleBtn.textContent='Поставити як «немає в наявності»'; }
-          else { if(stockBadge){ stockBadge.textContent='Немає в наявності'; stockBadge.classList.remove('stock-yes'); stockBadge.classList.add('stock-no'); } toggleBtn.textContent='Повернути в наявність'; }
-        } else alert(json?.error || 'Не вдалося змінити статус');
-      } catch(e){ console.error(e); alert('Помилка мережі або доступу'); }
-    });
-  }
-
-  // delete review (admin)
-  qa('.delete-review-btn').forEach(btn => {
-    btn.addEventListener('click', async function(e){
-      e.preventDefault();
-      if(!confirm('Видалити цей відгук?')) return;
-      const url = this.dataset.deleteUrl;
-      try {
-        const res = await fetch(url, { method:'POST', headers:{ 'X-CSRFToken': csrftoken, 'X-Requested-With':'XMLHttpRequest' }, credentials:'same-origin' });
-        const json = await res.json().catch(()=>null);
-        if(res.ok && json && json.ok){ const el = q('#review-'+this.dataset.reviewId); if(el) el.remove(); }
-        else alert(json?.error || 'Не вдалося видалити відгук');
-      } catch(e){ console.error(e); alert('Помилка мережі'); }
-    });
+  // close when clicking outside dialog
+  modal.addEventListener('click', function(e){
+    if (e.target === modal) closeModal();
   });
-
-  // callback modal handlers
-  const openBtn = q('#requestCallbackBtn'), modal = q('#callbackModal'), cbForm = q('#callbackForm'), cbCancel = q('#cbCancel'), cbResult = q('#cbResult');
-  function openModal(productId){ if(cbForm) cbForm.querySelector('#cb_product').value = productId || ''; if(modal) modal.style.display='flex'; if(cbResult) cbResult.style.display='none'; }
-  function closeModal(){ if(modal) modal.style.display='none'; }
-  if(openBtn) openBtn.addEventListener('click', e=>{ e.preventDefault(); openModal(openBtn.dataset.productId || '{{ product.id }}'); });
-  if(cbCancel) cbCancel.addEventListener('click', e=>{ e.preventDefault(); closeModal(); });
-  if(cbForm){
-    cbForm.addEventListener('submit', async function(e){
-      e.preventDefault();
-      const data = new FormData(cbForm);
-      try {
-        const res = await fetch("{% url 'request_callback' %}", { method:'POST', headers:{ 'X-CSRFToken': getCookie('csrftoken') }, body: data, credentials:'same-origin' });
-        const json = await res.json().catch(()=>null);
-        if(res.ok && json && json.ok){ if(cbResult){ cbResult.style.color='green'; cbResult.textContent = json.message || 'Дякуємо'; cbResult.style.display='block'; } cbForm.reset(); setTimeout(closeModal,1400); }
-        else { if(cbResult){ cbResult.style.color='red'; cbResult.textContent = json?.error || 'Помилка'; cbResult.style.display='block'; } }
-      } catch(err){ console.error(err); if(cbResult){ cbResult.style.color='red'; cbResult.textContent='Помилка мережі'; cbResult.style.display='block'; } }
-    });
-  }
-});
+})();
 </script>
 {% endblock %}
