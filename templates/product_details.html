@@ -1,6 +1,3 @@
-git config user.email "bohdan228bohdan@gmail.com"
-git config user.name  "
-bohdan228bohdan-pixel"
 {% extends 'base.html' %}
 {% load static %}
 
@@ -121,6 +118,40 @@ bohdan228bohdan-pixel"
   .thumb { width:48px; height:48px; }
   #product-title { font-size:20px; }
   .price { font-size:22px; }
+}
+.callback-modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px; }
+.callback-modal-inner { background:var(--panel-bg); color:var(--white); padding:18px; border-radius:10px; width:100%; max-width:560px; box-shadow:0 14px 50px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.04); }
+.callback-modal h3 { margin:0 0 10px; color:var(--fg); }
+
+/* Поля */
+.callback-modal .field { margin-top:10px; }
+.callback-modal input[type="text"], .callback-modal input[type="tel"], .callback-modal textarea {
+  width:100%;
+  padding:10px;
+  margin-top:6px;
+  border-radius:8px;
+  background: rgba(255,255,255,0.02);
+  color:var(--white);
+  border:1px solid rgba(255,255,255,0.04);
+  outline: none;
+  box-sizing: border-box;
+}
+.callback-modal input::placeholder, .callback-modal textarea::placeholder { color: rgba(255,255,255,0.35); }
+
+/* Кнопки */
+.btn { display:inline-flex; align-items:center; gap:8px; justify-content:center; padding:10px 14px; border-radius:8px; font-weight:800; cursor:pointer; text-decoration:none; }
+.btn-primary { background: linear-gradient(90deg,var(--accent),var(--accent-dark)); color:#fff; border:0; }
+.btn-outline { background:transparent; color:var(--white); border:1px solid rgba(255,255,255,0.06); }
+.btn-call { background: linear-gradient(90deg,var(--accent), #cc4a20); color:#fff; border:0; padding:10px 14px; }
+
+/* Результат */
+.cb-result { font-size:0.95rem; color:var(--muted); }
+
+/* Responsive */
+@media (max-width:640px){
+  .callback-modal-inner{ padding:14px; max-width:92%; }
+  .cb-actions { flex-wrap:wrap; }
+  .btn-call { width:100%; order:3; margin-left:0; }
 }
 </style>
 {% endblock %}
