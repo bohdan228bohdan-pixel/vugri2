@@ -22,7 +22,6 @@ from django.templatetags.static import static
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from .forms import CallbackRequestForm
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
-from .models import Order, CallbackRequest
 from django.utils import timezone
 
 
@@ -41,6 +40,7 @@ from .models import (
     ProductImage,
     Conversation,
     Message,
+    CallbackRequest,
 )
 # Configure Stripe
 stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
