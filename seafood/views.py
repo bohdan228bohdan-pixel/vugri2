@@ -23,6 +23,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from .forms import CallbackRequestForm
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from .models import Order, CallbackRequest
+from django.utils import timezone
 
 
 from django.contrib.admin.views.decorators import staff_member_required
@@ -714,31 +715,18 @@ def verify_email(request):
 
 @login_required
 def profile(request):
-    # orders: спроба отримати замовлення користувача (якщо модель Order є)
     try:
         orders = Order.objects.filter(user=request.user).select_related('product').order_by('-created_at')
     except Exception:
         orders = []
-
-    # безпечний доступ до related profile (якщо немає запису)
     try:
         profile_obj = request.user.profile
     except Exception:
         profile_obj = None
-
-    # лічильник необроблених callback-requests для VugriUa/superuser
     callbacks_unprocessed_count = 0
     if request.user.username == 'VugriUa' or request.user.is_superuser:
-        try:
-            callbacks_unprocessed_count = CallbackRequest.objects.filter(processed=False).count()
-        except Exception:
-            callbacks_unprocessed_count = 0
-
-    return render(request, 'profile.html', {
-        'orders': orders,
-        'profile': profile_obj,
-        'callbacks_unprocessed_count': callbacks_unprocessed_count,
-    })
+        callbacks_unprocessed_count = CallbackRequest.objects.filter(processed=False).count()
+    return render(request, 'profile.html', {'orders': orders, 'profile': profile_obj, 'callbacks_unprocessed_count': callbacks_unprocessed_count})
 
 def about(request):
     return render(request, 'about.html')
@@ -1218,10 +1206,6 @@ def product_create(request):
 
     return render(request, 'product_create.html')
  
-from django.shortcuts import render, redirect
-from django.utils import timezone
-from django.urls import reverse
-import random
 
 def checkout_view(request):
     """
@@ -2076,14 +2060,7 @@ def toggle_callback_processed(request, pk):
 
 @login_required
 def order_detail(request, order_id):
-    """
-    Перегляд деталів замовлення.
-    Доступ: власник замовлення, superuser або користувач з username == 'VugriUa'.
-    """
     order = get_object_or_404(Order, pk=order_id)
-
-    # Перевірка прав доступу
     if order.user and order.user != request.user and not (request.user.is_superuser or request.user.username == 'VugriUa'):
         return HttpResponseForbidden("Недостатньо прав для перегляду цього замовлення")
-
     return render(request, 'order_detail.html', {'order': order})
