@@ -70,7 +70,7 @@ urlpatterns = [
     path('debug/session-cart/', seafood_views.debug_session_cart, name='debug_session_cart'),
     path('request-callback/', seafood_views.request_callback, name='request_callback'),
     path('callback-requests/<int:pk>/toggle/', seafood_views.toggle_callback_processed, name='toggle_callback_processed'),
-    path('order/<int:order_id>/', seafood_views.order_detail, name='order_detail'),
+    path('orders/int:order_id/', seafood_views.order_detail, name='order_detail'),
 ]
 
 # Password change (user must be logged in)
