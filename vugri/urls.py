@@ -69,7 +69,6 @@ urlpatterns = [
     path('review/<int:review_id>/delete/', seafood_views.delete_review, name='delete_review'),
     path('debug/session-cart/', seafood_views.debug_session_cart, name='debug_session_cart'),
     path('request-callback/', seafood_views.request_callback, name='request_callback'),
-    path('callback-requests/', seafood_views.callback_requests, name='callback_requests'),
     path('callback-requests/<int:pk>/toggle/', seafood_views.toggle_callback_processed, name='toggle_callback_processed'),
 ]
 
