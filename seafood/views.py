@@ -715,19 +715,44 @@ def verify_email(request):
 
 @login_required
 def profile(request):
+    """
+    Безпечний рендер профілю користувача.
+    Віддає в шаблон:
+      - orders: список замовлень користувача (безпечний fallback [])
+      - profile: пов'язаний profile або None
+      - callbacks_unprocessed_count: кількість необроблених запитів (тільки для VugriUa / superuser)
+      - is_vugri_admin: булевий прапорець для простого використання в шаблоні
+    """
+    # Orders (якщо модель Order є)
     try:
         orders = Order.objects.filter(user=request.user).select_related('product').order_by('-created_at')
     except Exception:
         orders = []
+
+    # Безпечний доступ до пов'язаного профілю (якщо його немає)
     try:
         profile_obj = request.user.profile
     except Exception:
         profile_obj = None
-    callbacks_unprocessed_count = 0
-    if request.user.username == 'VugriUa' or request.user.is_superuser:
-        callbacks_unprocessed_count = CallbackRequest.objects.filter(processed=False).count()
-    return render(request, 'profile.html', {'orders': orders, 'profile': profile_obj, 'callbacks_unprocessed_count': callbacks_unprocessed_count})
 
+    # Лічильник необроблених запитів (тільки для VugriUa або суперюзера)
+    callbacks_unprocessed_count = 0
+    if request.user.is_authenticated and (request.user.username == 'VugriUa' or request.user.is_superuser):
+        try:
+            callbacks_unprocessed_count = CallbackRequest.objects.filter(processed=False).count()
+        except Exception:
+            callbacks_unprocessed_count = 0
+
+    # Простий прапорець для шаблону (щоб уникнути складної логіки в шаблоні)
+    is_vugri_admin = request.user.is_authenticated and (request.user.username == 'VugriUa' or request.user.is_superuser)
+
+    return render(request, 'profile.html', {
+        'orders': orders,
+        'profile': profile_obj,
+        'callbacks_unprocessed_count': callbacks_unprocessed_count,
+        'is_vugri_admin': is_vugri_admin,
+    })
+    
 def about(request):
     return render(request, 'about.html')
 
