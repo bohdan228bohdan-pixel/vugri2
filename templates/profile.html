@@ -12,13 +12,20 @@
 .info-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
 .profile-label{color:var(--muted);font-weight:600}
 .profile-value{font-weight:700}
-.controls{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
+.controls{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap;align-items:center}
 .profile-btn{display:inline-block;padding:10px 14px;border-radius:10px;text-align:center;text-decoration:none;color:#fff;background:linear-gradient(90deg,var(--accent),#c94b2f);font-weight:700}
 .profile-btn-outline{display:inline-block;padding:10px 14px;border-radius:10px;text-align:center;text-decoration:none;color:var(--accent);background:transparent;border:1px solid rgba(255,255,255,0.04);font-weight:700}
 .logout-btn{display:block;width:100%;padding:12px;border-radius:10px;background:linear-gradient(90deg,#c0392b,#e74c3c);color:#fff;border:none;margin-top:18px;text-align:center}
 .orders-list{padding-left:18px;color:var(--muted);margin:8px 0}
 .order-item{margin-bottom:6px;color:var(--muted)}
 .order-item .muted-small{color:rgba(255,255,255,0.6);font-size:13px}
+
+/* Callback button and badge */
+.profile-callback-wrap{width:100%;display:flex;justify-content:center;margin-top:12px}
+.profile-callback-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:linear-gradient(90deg,var(--accent),#c94b2f);color:#fff;text-decoration:none;font-weight:800}
+.profile-callback-badge{background:#ff4757;color:#fff;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px}
+
+/* Responsive */
 @media(max-width:600px){.profile-container{margin:40px 12px;padding:18px}}
 </style>
 {% endblock %}
@@ -26,10 +33,22 @@
 {% block content %}
   <div class="profile-container" data-aos="fade-up">
     <div class="profile-header">
-      <div class="avatar">{{ user.username|slice:":1"|upper }}</div>
+      <div class="avatar" aria-hidden="true">{{ user.username|slice:":1"|upper }}</div>
       <h2 style="color:#fff;margin:0">Профіль — {{ user.username }}</h2>
       <div style="color:var(--muted)">Ласкаво просимо! Тут ви можете переглянути свої замовлення та налаштувати акаунт.</div>
     </div>
+
+    <!-- Для головного акаунту VugriUa (або суперюзера) показуємо швидкий доступ до запитів зворотного зв'язку -->
+    {% if user.is_authenticated and (user.username == 'VugriUa' or user.is_superuser) %}
+      <div class="profile-callback-wrap" role="region" aria-label="Запити зворотного зв'язку">
+        <a href="{% url 'callback_requests' %}" class="profile-callback-btn" aria-label="Переглянути запити зворотного зв'язку">
+          📨 Запити зворотного зв'язку
+          {% if callbacks_unprocessed_count %}
+            <span class="profile-callback-badge" aria-hidden="true">{{ callbacks_unprocessed_count }}</span>
+          {% endif %}
+        </a>
+      </div>
+    {% endif %}
 
     <div class="profile-info" role="region" aria-label="Інформація користувача">
       <div class="info-row"><span class="profile-label">Логін:</span><span class="profile-value">{{ user.username }}</span></div>
@@ -70,22 +89,18 @@
     </div>
 
     <div class="controls" role="group" aria-label="Дії користувача">
-      <a href="{% url 'password_change' %}" class="profile-btn">🔒 Змінити пароль</a>
-      <a href="{% url 'password_reset' %}" class="profile-btn-outline">❓ Забули пароль?</a>
-      <a href="#" class="profile-btn-outline" onclick="alert('Функція зміни email у розробці')">✉️ Змінити email</a>
-        <p style="margin-top:12px;">
-    <a class="btn btn-outline" href="{% url 'archived_conversations' %}">Архів чатів</a>
-  </p>
-      {% if user.is_authenticated and (user.username == 'VugriUa' or user.is_superuser) %}
-  <p style="margin-top:12px;">
-    <a href="{% url 'callback_requests' %}" class="btn btn-primary" style="padding:10px 14px;border-radius:8px">📨 Запити зворотного зв'язку</a>
-  </p>
-{% endif %}
+      <a href="{% url 'password_change' %}" class="profile-btn" title="Змінити пароль">🔒 Змінити пароль</a>
+      <a href="{% url 'password_reset' %}" class="profile-btn-outline" title="Скидання пароля">❓ Забули пароль?</a>
+      <a href="#" class="profile-btn-outline" onclick="alert('Функція зміни email у розробці')" title="Змінити email">✉️ Змінити email</a>
+
+      <a class="btn btn-outline" href="{% url 'archived_conversations' %}" style="margin-left:6px">Архів чатів</a>
+      <a class="btn btn-outline" href="{% url 'my_conversations' %}" style="margin-left:6px">Мої чати</a>
+      <a class="btn btn-outline" href="{% url 'contact' %}" style="margin-left:6px">Контакти</a>
     </div>
 
     <form method="post" action="{% url 'logout' %}">
       {% csrf_token %}
-      <button type="submit" class="logout-btn">🚪 Вийти з акаунту</button>
+      <button type="submit" class="logout-btn" aria-label="Вийти з акаунту">🚪 Вийти з акаунту</button>
     </form>
   </div>
 {% endblock %}
