@@ -29,93 +29,95 @@
 {% endblock %}
 
 {% block content %}
-  <main class="profile-container" role="main" aria-label="Профіль користувача">
-    <div class="profile-header" aria-hidden="false">
-      <div class="avatar" aria-hidden="true">{{ user.username|slice:":1"|upper }}</div>
-      <h2 style="color:#fff;margin:0">Профіль — {{ user.username }}</h2>
-      <div style="color:var(--muted)">Ласкаво просимо! Тут ви можете переглянути свої замовлення та налаштувати акаунт.</div>
+<main class="profile-container" role="main" aria-label="Профіль користувача">
+  <div class="profile-header">
+    <div class="avatar" aria-hidden="true">{{ user.username|slice:":1"|upper }}</div>
+    <h2 style="color:#fff;margin:0">Профіль — {{ user.username }}</h2>
+    <div style="color:var(--muted)">Ласкаво просимо! Тут ви можете переглянути свої замовлення та налаштувати акаунт.</div>
+  </div>
+
+  {# Кнопка доступу до запитів зворотного зв'язку (лише для adm) #}
+  {% if is_vugri_admin %}
+    <div class="profile-callback-wrap" role="region" aria-label="Запити зворотного зв'язку">
+      <a href="{% url 'callback_requests' %}" class="profile-callback-btn" aria-label="Переглянути запити зворотного зв'язку">
+        📨 Запити зворотного зв'язку
+        {# Уникаємо фільтрів/дужок у складних {% if %} — переглядаємо вже числове значення з view #}
+        {% if callbacks_unprocessed_count and callbacks_unprocessed_count > 0 %}
+          <span class="profile-callback-badge" aria-hidden="true">{{ callbacks_unprocessed_count }}</span>
+        {% endif %}
+      </a>
     </div>
+  {% endif %}
 
-    {# Кнопка доступу до запитів зворотного зв'язку показується через прапорець is_vugri_admin #}
-    {% if is_vugri_admin %}
-      <div class="profile-callback-wrap" role="region" aria-label="Запити зворотного зв'язку">
-        <a href="{% url 'callback_requests' %}" class="profile-callback-btn" aria-label="Переглянути запити зворотного зв'язку">
-          📨 Запити зворотного зв'язку
-          {% if callbacks_unprocessed_count and callbacks_unprocessed_count|int > 0 %}
-            <span class="profile-callback-badge" aria-hidden="true">{{ callbacks_unprocessed_count }}</span>
-          {% endif %}
-        </a>
-      </div>
-    {% endif %}
+  <section class="profile-info" role="region" aria-label="Інформація користувача" style="margin-top:18px">
+    <div class="info-row"><span class="profile-label">Логін:</span><span class="profile-value">{{ user.username }}</span></div>
+    <div class="info-row"><span class="profile-label">Email:</span><span class="profile-value">{{ user.email|default:"Не вказано" }}</span></div>
+    <div class="info-row"><span class="profile-label">Дата реєстрації:</span><span class="profile-value">{{ user.date_joined|date:'d.m.Y H:i' }}</span></div>
+  </section>
 
-    <section class="profile-info" role="region" aria-label="Інформація користувача" style="margin-top:18px">
-      <div class="info-row"><span class="profile-label">Логін:</span><span class="profile-value">{{ user.username }}</span></div>
-      <div class="info-row"><span class="profile-label">Email:</span><span class="profile-value">{{ user.email|default:"Не вказано" }}</span></div>
-      <div class="info-row"><span class="profile-label">Дата реєстрації:</span><span class="profile-value">{{ user.date_joined|date:'d.m.Y H:i' }}</span></div>
-    </section>
+  <section class="profile-balance" style="margin-top:12px" role="region" aria-label="Баланс користувача">
+    <div class="info-row">
+      <span class="profile-label">Баланс:</span>
+      <span class="profile-value">
+        {% if profile and profile.balance %}
+          {{ profile.balance }} грн
+        {% else %}
+          0.00 грн
+        {% endif %}
+      </span>
+    </div>
+  </section>
 
-    <section class="profile-balance" style="margin-top:12px" role="region" aria-label="Баланс користувача">
-      <div class="info-row">
-        <span class="profile-label">��аланс:</span>
-        <span class="profile-value">
-         {% if profile and profile.balance %}
-           {{ profile.balance }} грн
-         {% else %}
-           0.00 грн
-         {% endif %}
-        </span>
-      </div>
-    </section>
+  <section class="profile-tickets" style="margin-top:18px" role="region" aria-label="Замовлення користувача">
+    <div style="display:flex;flex-direction:column;gap:8px;padding:0">
+      <span class="profile-label" style="margin-bottom:6px">Ваші замовлення вугра:</span>
 
-    <section class="profile-tickets" style="margin-top:18px" role="region" aria-label="Замовлення користувача">
-      <div style="display:flex;flex-direction:column;gap:8px;padding:0">
-        <span class="profile-label" style="margin-bottom:6px">Ваші замовлення вугра:</span>
-
-        {% if orders %}
-          <ul class="orders-list" aria-live="polite">
-            {% for order in orders %}
-              <li class="order-item" role="article" aria-label="Замовлення {{ order.id }}">
-                <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
-                  <div>
-                    <strong style="color:var(--fg)">#{{ order.id }}</strong>
-                    {% if order.product %}
-                      — <a href="{% url 'product_details' order.product.id %}" style="color:var(--accent)">{{ order.product.name }}</a>
-                    {% else %}
-                      — <span class="meta">Товар видалено</span>
-                    {% endif %}
-                    <div class="meta">
-                      {{ order.quantity_g }} г — {{ order.total_price|floatformat:2 }} грн
-                    </div>
-                  </div>
-                  <div class="meta" style="text-align:right">
-                    <div>Створено: {{ order.created_at|date:'d.m.Y H:i' }}</div>
-                    <div style="margin-top:6px">
-                      <a class="profile-btn-outline" href="{% url 'order_detail' order.id %}" title="Переглянути замовлення">Переглянути</a>
-                    </div>
+      {% if orders %}
+        <ul class="orders-list" aria-live="polite">
+          {% for order in orders %}
+            <li class="order-item" role="article" aria-label="Замовлення {{ order.id }}">
+              <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+                <div>
+                  <strong style="color:var(--fg)">#{{ order.id }}</strong>
+                  {% if order.product %}
+                    — <a href="{% url 'product_details' order.product.id %}" style="color:var(--accent)">{{ order.product.name }}</a>
+                  {% else %}
+                    — <span class="meta">Товар видалено</span>
+                  {% endif %}
+                  <div class="meta">
+                    {{ order.quantity_g }} г — {{ order.total_price|floatformat:2 }} грн
                   </div>
                 </div>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <div class="empty-note">У вас ще немає замовлень.</div>
-        {% endif %}
-      </div>
-    </section>
+                <div class="meta" style="text-align:right">
+                  <div>Створено: {{ order.created_at|date:'d.m.Y H:i' }}</div>
+                  <div style="margin-top:6px">
+                    {# Видалено посилання на order_detail (функціонал прибрано) #}
+                    <span class="meta">Переглянути деталі в чаті</span>
+                  </div>
+                </div>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty-note">У вас ще немає замовлень.</div>
+      {% endif %}
+    </div>
+  </section>
 
-    <section class="controls" role="region" aria-label="Дії користувача" style="margin-top:18px">
-      <a href="{% url 'password_change' %}" class="profile-btn" title="Змінити пароль">🔒 Змінити пароль</a>
-      <a href="{% url 'password_reset' %}" class="profile-btn-outline" title="Скидання пароля">❓ Забули пароль?</a>
-      <a href="#" class="profile-btn-outline" onclick="alert('Функція зміни email у розробці')" title="Змінити email">✉️ Змінити email</a>
+  <section class="controls" role="region" aria-label="Дії користувача" style="margin-top:18px">
+    <a href="{% url 'password_change' %}" class="profile-btn" title="Змінити пароль">🔒 Змінити пароль</a>
+    <a href="{% url 'password_reset' %}" class="profile-btn-outline" title="Скидання пароля">❓ Забули пароль?</a>
+    <a href="#" class="profile-btn-outline" onclick="alert('Функція зміни email у розробці')" title="Змінити email">✉️ Змінити email</a>
 
-      <a class="btn btn-outline" href="{% url 'archived_conversations' %}" style="margin-left:6px">Архів чатів</a>
-      <a class="btn btn-outline" href="{% url 'my_conversations' %}" style="margin-left:6px">Мої чати</a>
-      <a class="btn btn-outline" href="{% url 'contact' %}" style="margin-left:6px">Контакти</a>
-    </section>
+    <a class="btn btn-outline" href="{% url 'archived_conversations' %}" style="margin-left:6px">Архів чатів</a>
+    <a class="btn btn-outline" href="{% url 'my_conversations' %}" style="margin-left:6px">Мої чати</a>
+    <a class="btn btn-outline" href="{% url 'contact' %}" style="margin-left:6px">Контакти</a>
+  </section>
 
-    <form method="post" action="{% url 'logout' %}" style="margin-top:18px">
-      {% csrf_token %}
-      <button type="submit" class="logout-btn" aria-label="Вийти з акаунту">🚪 Вийти з акаунту</button>
-    </form>
-  </main>
+  <form method="post" action="{% url 'logout' %}" style="margin-top:18px">
+    {% csrf_token %}
+    <button type="submit" class="logout-btn" aria-label="Вийти з акаунту">🚪 Вийти з акаунту</button>
+  </form>
+</main>
 {% endblock %}
