@@ -710,33 +710,38 @@ if (addBtn) {
 <div id="callbackModal" class="callback-modal" style="display:none;">
   <div class="callback-modal-inner" role="dialog" aria-modal="true" aria-labelledby="cbTitle">
     <h3 id="cbTitle">Замовити зворотній зв'язок</h3>
-    <form id="callbackForm" method="post">
+    <form id="callbackForm" method="post" novalidate>
       {% csrf_token %}
       <input type="hidden" name="product" id="cb_product" value="{{ product.id }}">
-      <div>
-        <label>Телефон *</label>
-        <input type="text" name="phone" id="cb_phone" placeholder="+380XXXXXXXXX" required>
+      <div class="field">
+        <label for="cb_phone">Телефон *</label>
+        <input type="tel" name="phone" id="cb_phone" placeholder="+380XXXXXXXXX" required>
       </div>
-      <div>
-        <label>Ім'я</label>
+      <div class="field">
+        <label for="cb_name">Ім'я</label>
         <input type="text" name="name" id="cb_name" placeholder="Ваше ім'я (необов'язково)">
       </div>
-      <div>
-        <label>Зручний час</label>
+      <div class="field">
+        <label for="cb_time">Зручний час</label>
         <input type="text" name="preferred_time" id="cb_time" placeholder="Наприклад: завтра після 18:00">
       </div>
-      <div>
-        <label>Повідомлення</label>
+
+      <div class="field">
+        <label for="cb_message">Повідомлення</label>
         <textarea name="message" id="cb_message" rows="3" placeholder="Коротко опишіть запит"></textarea>
       </div>
 
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <div class="cb-actions" style="margin-top:14px;display:flex;gap:10px;align-items:center">
         <button type="submit" class="btn btn-primary" id="cbSendBtn">Надіслати</button>
         <button type="button" class="btn btn-outline" id="cbCancel">Скасувати</button>
-        <a href="tel:+380986666466" class="btn btn-outline" style="margin-left:auto">Подзвонити</a>
+
+        <!-- помітна кнопка дзвінка, праворуч -->
+        <a href="tel:+380986666466" id="cbCallNow" class="btn btn-call" style="margin-left:auto" aria-label="Подзвонити зараз за номером +380 98 666 64 66">
+          <span class="phone-icon" aria-hidden="true">📞</span> Подзвонити зараз
+        </a>
       </div>
 
-      <div id="cbResult" style="margin-top:10px;display:none;"></div>
+      <div id="cbResult" class="cb-result" style="margin-top:12px;display:none;"></div>
     </form>
   </div>
 </div>
