@@ -22,6 +22,7 @@ from django.templatetags.static import static
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from .forms import CallbackRequestForm
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from .models import Order, CallbackRequest
 
 
 from django.contrib.admin.views.decorators import staff_member_required
@@ -720,20 +721,22 @@ def profile(request):
       - profile: пов'язаний профіль або None (щоб уникнути RelatedObjectDoesNotExist)
       - callbacks_unprocessed_count: кількість необроблених запитів (тільки для VugriUa / superuser)
     """
-    # Замовлення користувача (якщо в проєкті є модель Order)
+    # Імпорти: переконайтесь, що вгорі файлу є
+    # from .models import Order, CallbackRequest
+
+    # Отримати замовлення користувача (якщо модель Order є)
     try:
         orders = Order.objects.filter(user=request.user).select_related('product').order_by('-created_at')
     except Exception:
-        # якщо Order не існує або інша помилка — віддаємо порожній список
         orders = []
 
-    # Безпечний доступ до related Profile (OneToOne) — уникнути падіння коли запису немає
+    # Безпечний доступ до related Profile (OneToOne) — якщо такого зв'язку немає, profile_obj = None
     try:
         profile_obj = request.user.profile
     except Exception:
         profile_obj = None
 
-    # Лічильник необроблених запитів для VugriUa (щоб показати бейдж в профілі)
+    # Лічильник необроблених запитів (для VugriUa / superuser)
     callbacks_unprocessed_count = 0
     if request.user.username == 'VugriUa' or request.user.is_superuser:
         try:
@@ -2056,7 +2059,6 @@ def request_callback(request):
         # повертаємо помилки в JSON
         return JsonResponse({'ok': False, 'errors': form.errors}, status=400)
 
-from .models import CallbackRequest
 
 @login_required
 def callback_requests(request):
