@@ -22,7 +22,7 @@ from django.templatetags.static import static
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from .forms import CallbackRequestForm
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
-from .models import CallbackRequest
+
 
 from django.contrib.admin.views.decorators import staff_member_required
 
