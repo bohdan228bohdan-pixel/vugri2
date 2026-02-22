@@ -714,41 +714,7 @@ def verify_email(request):
 
 @login_required
 def profile(request):
-    """
-    Безпечний рендер профілю користувача.
-    Передає в шаблон:
-      - orders: список замовлень користувача (можна пустий)
-      - profile: пов'язаний профіль або None (щоб уникнути RelatedObjectDoesNotExist)
-      - callbacks_unprocessed_count: кількість необроблених запитів (тільки для VugriUa / superuser)
-    """
-    # Імпорти: переконайтесь, що вгорі файлу є
-    # from .models import Order, CallbackRequest
-
-    # Отримати замовлення користувача (якщо модель Order є)
-    try:
-        orders = Order.objects.filter(user=request.user).select_related('product').order_by('-created_at')
-    except Exception:
-        orders = []
-
-    # Безпечний доступ до related Profile (OneToOne) — якщо такого зв'язку немає, profile_obj = None
-    try:
-        profile_obj = request.user.profile
-    except Exception:
-        profile_obj = None
-
-    # Лічильник необроблених запитів (для VugriUa / superuser)
-    callbacks_unprocessed_count = 0
-    if request.user.username == 'VugriUa' or request.user.is_superuser:
-        try:
-            callbacks_unprocessed_count = CallbackRequest.objects.filter(processed=False).count()
-        except Exception:
-            callbacks_unprocessed_count = 0
-
-    return render(request, 'profile.html', {
-        'orders': orders,
-        'profile': profile_obj,
-        'callbacks_unprocessed_count': callbacks_unprocessed_count,
-    })
+    return render(request, 'profile.html')
 
 
 def about(request):
