@@ -76,6 +76,11 @@
         <p style="margin-top:12px;">
     <a class="btn btn-outline" href="{% url 'archived_conversations' %}">Архів чатів</a>
   </p>
+      {% if user.is_authenticated and (user.username == 'VugriUa' or user.is_superuser) %}
+  <p style="margin-top:12px;">
+    <a href="{% url 'callback_requests' %}" class="btn btn-primary" style="padding:10px 14px;border-radius:8px">📨 Запити зворотного зв'язку</a>
+  </p>
+{% endif %}
     </div>
 
     <form method="post" action="{% url 'logout' %}">
