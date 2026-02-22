@@ -710,42 +710,41 @@ if (addBtn) {
 <div id="callbackModal" class="callback-modal" style="display:none;">
   <div class="callback-modal-inner" role="dialog" aria-modal="true" aria-labelledby="cbTitle">
     <h3 id="cbTitle">Замовити зворотній зв'язок</h3>
-    <form id="callbackForm" method="post">
+    <form id="callbackForm" method="post" novalidate>
       {% csrf_token %}
       <input type="hidden" name="product" id="cb_product" value="{{ product.id }}">
-      <div>
-        <label>Телефон *</label>
-        <input type="text" name="phone" id="cb_phone" placeholder="+380XXXXXXXXX" required>
+      <div class="field">
+        <label for="cb_phone">Телефон *</label>
+        <input type="tel" name="phone" id="cb_phone" placeholder="+380XXXXXXXXX" required>
       </div>
-      <div>
-        <label>Ім'я</label>
+      <div class="field">
+        <label for="cb_name">Ім'я</label>
         <input type="text" name="name" id="cb_name" placeholder="Ваше ім'я (необов'язково)">
       </div>
-      <div>
-        <label>Зручний час</label>
+      <div class="field">
+        <label for="cb_time">Зручний час</label>
         <input type="text" name="preferred_time" id="cb_time" placeholder="Наприклад: завтра після 18:00">
       </div>
-      <div>
-        <label>Повідомлення</label>
+
+      <div class="field">
+        <label for="cb_message">Повідомлення</label>
         <textarea name="message" id="cb_message" rows="3" placeholder="Коротко опишіть запит"></textarea>
       </div>
 
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <div class="cb-actions" style="margin-top:14px;display:flex;gap:10px;align-items:center">
         <button type="submit" class="btn btn-primary" id="cbSendBtn">Надіслати</button>
         <button type="button" class="btn btn-outline" id="cbCancel">Скасувати</button>
-        <a href="tel:+380986666466" class="btn btn-outline" style="margin-left:auto">Подзвонити</a>
+
+        <!-- помітна кнопка дзвінка, праворуч -->
+        <a href="tel:+380986666466" id="cbCallNow" class="btn btn-call" style="margin-left:auto" aria-label="Подзвонити зараз за номером +380 98 666 64 66">
+          <span class="phone-icon" aria-hidden="true">📞</span> Подзвонити зараз
+        </a>
       </div>
 
-      <div id="cbResult" style="margin-top:10px;display:none;"></div>
+      <div id="cbResult" class="cb-result" style="margin-top:12px;display:none;"></div>
     </form>
   </div>
 </div>
-
-<style>
-.callback-modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px; }
-.callback-modal-inner { background:#fff; color:#111; padding:18px; border-radius:8px; width:100%; max-width:540px; box-shadow:0 10px 40px rgba(0,0,0,0.4); }
-.callback-modal input, .callback-modal textarea { width:100%; padding:8px; margin-top:6px; border:1px solid #ddd; border-radius:6px; }
-</style>
 
 <script>
 (function(){
@@ -755,61 +754,77 @@ if (addBtn) {
   const form = document.getElementById('callbackForm');
   const resultBox = document.getElementById('cbResult');
   const sendBtn = document.getElementById('cbSendBtn');
+  const callNow = document.getElementById('cbCallNow');
 
-  if (!openBtn || !modal || !form) return;
+  if (!modal || !form) return;
 
+  // Відкриття модалки — існуюча логіка (як було у файлі)
   function openModal(productId){
-    const hid = modal.querySelector('#cb_product');
-    if (hid && productId) hid.value = productId;
-    resultBox.style.display = 'none';
+    if (productId) document.getElementById('cb_product').value = productId;
     modal.style.display = 'flex';
+    // фокус на телефоні
+    setTimeout(()=> document.getElementById('cb_phone').focus(), 120);
   }
-  function closeModal(){ modal.style.display = 'none'; }
 
-  openBtn.addEventListener('click', function(e){
+  function closeModal(){
+    modal.style.display = 'none';
+  }
+
+  if (openBtn){
+    openBtn.addEventListener('click', function(){
+      const pid = this.dataset.productId || '{{ product.id }}';
+      openModal(pid);
+    });
+  }
+
+  if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+  // Відправка форми через fetch (існуюча логіка)
+  form.addEventListener('submit', async function(e){
     e.preventDefault();
-    openModal(this.dataset.productId || '{{ product.id }}');
-  });
-  cancelBtn.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
-
-  function getCsrfToken(){
-    const el = form.querySelector('[name=csrfmiddlewaretoken]');
-    return el ? el.value : '';
-  }
-
-  form.addEventListener('submit', function(ev){
-    ev.preventDefault();
     sendBtn.disabled = true;
     resultBox.style.display = 'none';
-    const data = new FormData(form);
 
-    fetch("{% url 'request_callback' %}", {
-      method: "POST",
-      headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
-      body: data,
-      credentials: 'same-origin'
-    }).then(async res => {
+    try{
+      const data = new FormData(form);
+      const url = "{% url 'request_callback' %}";
+      const res = await fetch(url, { method:'POST', body: data, headers: {'X-Requested-With':'XMLHttpRequest'} });
       const json = await res.json().catch(()=>null);
       if (res.ok && json && json.ok){
-        resultBox.style.color = 'green';
+        resultBox.style.color = 'lightgreen';
         resultBox.textContent = json.message || 'Дякуємо! Ми зателефонуємо.';
         resultBox.style.display = 'block';
         form.reset();
-        setTimeout(closeModal, 1700);
+        setTimeout(closeModal, 1600);
       } else {
-        resultBox.style.color = 'red';
+        resultBox.style.color = '#ff8a8a';
         resultBox.textContent = (json && (json.error || JSON.stringify(json.errors))) || 'Помилка відправки';
         resultBox.style.display = 'block';
       }
-    }).catch(err=>{
-      resultBox.style.color = 'red';
+    } catch(err){
+      console.error(err);
+      resultBox.style.color = '#ff8080';
       resultBox.textContent = 'Помилка мережі. Спробуйте пізніше.';
       resultBox.style.display = 'block';
-      console.error(err);
-    }).finally(()=>{ sendBtn.disabled = false; });
+    } finally {
+      sendBtn.disabled = false;
+    }
   });
 
-  // close when clicking outside dialog
+  // Клік по кнопці "Подзвонити зараз" — закрити модал і ініціювати tel:
+  if (callNow){
+    callNow.addEventListener('click', function(e){
+      // Закриваємо модал, даємо час для браузера ініціювати дзвінок
+      closeModal();
+      // Лог в консоль — замість нього можна викликати аналітику
+      console.log('call-now clicked', this.href);
+      // Для більш надійного перенаправлення:
+      setTimeout(()=> { window.location.href = this.href; }, 120);
+      // Не робимо preventDefault — дозволяємо поведінку посилання на деяких платформах
+    });
+  }
+
+  // Закриття по кліку поза контентом
   modal.addEventListener('click', function(e){
     if (e.target === modal) closeModal();
   });
