@@ -2050,3 +2050,17 @@ def toggle_callback_processed(request, pk):
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'ok': True, 'processed': cb.processed})
     return redirect('callback_requests')
+
+@login_required
+def order_detail(request, order_id):
+    """
+    Перегляд деталів замовлення.
+    Доступ: власник замовлення, superuser або користувач з username == 'VugriUa'.
+    """
+    order = get_object_or_404(Order, pk=order_id)
+
+    # Перевірка прав доступу
+    if order.user and order.user != request.user and not (request.user.is_superuser or request.user.username == 'VugriUa'):
+        return HttpResponseForbidden("Недостатньо прав для перегляду цього замовлення")
+
+    return render(request, 'order_detail.html', {'order': order})
