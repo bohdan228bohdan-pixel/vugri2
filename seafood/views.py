@@ -2023,3 +2023,30 @@ def request_callback(request):
     else:
         # повертаємо помилки в JSON
         return JsonResponse({'ok': False, 'errors': form.errors}, status=400)
+
+from .models import CallbackRequest
+
+@login_required
+def callback_requests(request):
+    # Доступ лише для головного акаунта або суперюзера
+    if not (request.user.username == 'VugriUa' or request.user.is_superuser):
+        return HttpResponseForbidden("Недостатньо прав")
+
+    qs = CallbackRequest.objects.select_related('product').order_by('-created_at')
+    return render(request, 'callbacks_list.html', {'callbacks': qs})
+
+@require_POST
+@login_required
+def toggle_callback_processed(request, pk):
+    if not (request.user.username == 'VugriUa' or request.user.is_superuser):
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'error': 'forbidden'}, status=403)
+        return HttpResponseForbidden("Недостатньо прав")
+
+    cb = get_object_or_404(CallbackRequest, pk=pk)
+    cb.processed = not cb.processed
+    cb.save()
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'processed': cb.processed})
+    return redirect('callback_requests')
