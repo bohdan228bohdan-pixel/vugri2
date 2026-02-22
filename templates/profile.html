@@ -60,11 +60,11 @@
       <div class="info-row">
         <span class="profile-label">Баланс:</span>
         <span class="profile-value">
-          {% if user.profile and user.profile.balance %}
-            {{ user.profile.balance }} грн
-          {% else %}
-            0.00 грн
-          {% endif %}
+         {% if profile and profile.balance %}
+          {{ profile.balance }} грн
+        {% else %}
+          0.00 грн
+         {% endif %}
         </span>
       </div>
     </div>
