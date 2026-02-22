@@ -714,8 +714,31 @@ def verify_email(request):
 
 @login_required
 def profile(request):
-    return render(request, 'profile.html')
+    # orders: спроба отримати замовлення користувача (якщо модель Order є)
+    try:
+        orders = Order.objects.filter(user=request.user).select_related('product').order_by('-created_at')
+    except Exception:
+        orders = []
 
+    # безпечний доступ до related profile (якщо немає запису)
+    try:
+        profile_obj = request.user.profile
+    except Exception:
+        profile_obj = None
+
+    # лічильник необроблених callback-requests для VugriUa/superuser
+    callbacks_unprocessed_count = 0
+    if request.user.username == 'VugriUa' or request.user.is_superuser:
+        try:
+            callbacks_unprocessed_count = CallbackRequest.objects.filter(processed=False).count()
+        except Exception:
+            callbacks_unprocessed_count = 0
+
+    return render(request, 'profile.html', {
+        'orders': orders,
+        'profile': profile_obj,
+        'callbacks_unprocessed_count': callbacks_unprocessed_count,
+    })
 
 def about(request):
     return render(request, 'about.html')
