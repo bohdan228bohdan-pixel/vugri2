@@ -31,18 +31,16 @@
 {% block content %}
 <main class="profile-container" role="main" aria-label="Профіль користувача">
   <div class="profile-header">
-    <div class="avatar" aria-hidden="true">{{ user.username|slice:":1"|upper }}</div>
-    <h2 style="color:#fff;margin:0">Профіль — {{ user.username }}</h2>
+    <div class="avatar" aria-hidden="true">{{ user.username|default:"U"|slice:":1"|upper }}</div>
+    <h2 style="color:#fff;margin:0">Профіль — {{ user.username|default:"Користувач" }}</h2>
     <div style="color:var(--muted)">Ласкаво просимо! Тут ви можете переглянути свої замовлення та налаштувати акаунт.</div>
   </div>
 
-  {# Кнопка доступу до запитів зворотного зв'язку (лише для adm) #}
   {% if is_vugri_admin %}
     <div class="profile-callback-wrap" role="region" aria-label="Запити зворотного зв'язку">
       <a href="{% url 'callback_requests' %}" class="profile-callback-btn" aria-label="Переглянути запити зворотного зв'язку">
         📨 Запити зворотного зв'язку
-        {# Уникаємо фільтрів/дужок у складних {% if %} — переглядаємо вже числове значення з view #}
-        {% if callbacks_unprocessed_count and callbacks_unprocessed_count > 0 %}
+        {% if callbacks_unprocessed_count|default:0|int > 0 %}
           <span class="profile-callback-badge" aria-hidden="true">{{ callbacks_unprocessed_count }}</span>
         {% endif %}
       </a>
@@ -50,9 +48,9 @@
   {% endif %}
 
   <section class="profile-info" role="region" aria-label="Інформація користувача" style="margin-top:18px">
-    <div class="info-row"><span class="profile-label">Логін:</span><span class="profile-value">{{ user.username }}</span></div>
+    <div class="info-row"><span class="profile-label">Логін:</span><span class="profile-value">{{ user.username|default:"—" }}</span></div>
     <div class="info-row"><span class="profile-label">Email:</span><span class="profile-value">{{ user.email|default:"Не вказано" }}</span></div>
-    <div class="info-row"><span class="profile-label">Дата реєстрації:</span><span class="profile-value">{{ user.date_joined|date:'d.m.Y H:i' }}</span></div>
+    <div class="info-row"><span class="profile-label">Дата реєстрації:</span><span class="profile-value">{{ user.date_joined|date:"d.m.Y H:i" }}</span></div>
   </section>
 
   <section class="profile-balance" style="margin-top:12px" role="region" aria-label="Баланс користувача">
@@ -85,13 +83,12 @@
                     — <span class="meta">Товар видалено</span>
                   {% endif %}
                   <div class="meta">
-                    {{ order.quantity_g }} г — {{ order.total_price|floatformat:2 }} грн
+                    {{ order.quantity_g|default:"—" }} г — {{ order.total_price|default:0|floatformat:2 }} грн
                   </div>
                 </div>
                 <div class="meta" style="text-align:right">
-                  <div>Створено: {{ order.created_at|date:'d.m.Y H:i' }}</div>
+                  <div>Створено: {{ order.created_at|date:"d.m.Y H:i" }}</div>
                   <div style="margin-top:6px">
-                    {# Видалено посилання на order_detail (функціонал прибрано) #}
                     <span class="meta">Переглянути деталі в чаті</span>
                   </div>
                 </div>
