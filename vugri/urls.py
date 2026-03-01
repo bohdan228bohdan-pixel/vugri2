@@ -71,6 +71,8 @@ urlpatterns = [
     path('request-callback/', seafood_views.request_callback, name='request_callback'),
     path('callback-requests/<int:pk>/toggle/', seafood_views.toggle_callback_processed, name='toggle_callback_processed'),
     path('orders/<int:order_id>/', seafood_views.order_detail, name='order_detail'),
+    path('callback-requests/', seafood_views.callback_requests, name='callback_requests'),
+
 ]
 
 # Password change (user must be logged in)
