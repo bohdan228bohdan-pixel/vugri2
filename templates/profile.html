@@ -40,7 +40,7 @@
     <div class="profile-callback-wrap" role="region" aria-label="Запити зворотного зв'язку">
       <a href="{% url 'callback_requests' %}" class="profile-callback-btn" aria-label="Переглянути запити зворотного зв'язку">
         📨 Запити зворотного зв'язку
-        {% if callbacks_unprocessed_count|default:0|int > 0 %}
+        {% if callbacks_unprocessed_count|default:0 > 0 %}
           <span class="profile-callback-badge" aria-hidden="true">{{ callbacks_unprocessed_count }}</span>
         {% endif %}
       </a>
