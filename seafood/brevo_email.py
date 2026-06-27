@@ -1,13 +1,19 @@
 """
 Brevo (SendinBlue) email integration utility module.
-Provides functions to send emails via Brevo API.
+Provides functions to send emails via Brevo Transactional Email API.
+No SDK dependency - uses requests library directly.
 """
 
 from django.conf import settings
 import logging
+import json
+import requests
 from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
+
+# Brevo API endpoint for sending transactional emails
+BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email'
 
 
 def send_email_via_brevo(
@@ -24,7 +30,7 @@ def send_email_via_brevo(
     tags: Optional[List[str]] = None,
 ) -> bool:
     """
-    Send an email via Brevo API.
+    Send an email via Brevo Transactional Email API using requests.
     
     Args:
         subject: Email subject
@@ -60,71 +66,71 @@ def send_email_via_brevo(
         return False
     
     # Default to text_content if html_content is not provided
-    if not html_content:
+    if not html_content and text_content:
         html_content = text_content.replace('\n', '<br>')
     
     try:
-        import brevo_python
-        from brevo_python.rest import ApiException
-    except ImportError:
-        logger.error('brevo_python package is not installed')
-        return False
-    
-    try:
-        # Configure API key
-        configuration = brevo_python.Configuration()
-        configuration.api_key['api-key'] = api_key
-        
-        # Create API instance
-        api_instance = brevo_python.TransactionalEmailsApi(
-            brevo_python.ApiClient(configuration)
-        )
-        
-        # Build email data
-        email_data = {
+        # Build email payload for Brevo API
+        payload = {
             'subject': subject,
             'sender': {
                 'name': sender_name,
                 'email': sender_email,
             },
             'to': [{
-                'name': recipient_name,
+                'name': recipient_name or recipient_email,
                 'email': recipient_email,
             }],
         }
         
         # Add content
         if html_content:
-            email_data['htmlContent'] = html_content
+            payload['htmlContent'] = html_content
         if text_content:
-            email_data['textContent'] = text_content
+            payload['textContent'] = text_content
         
         # Add optional fields
         if reply_to:
-            email_data['replyTo'] = {
+            payload['replyTo'] = {
                 'email': reply_to,
             }
         
         if cc:
-            email_data['cc'] = [{'email': email} for email in cc]
+            payload['cc'] = [{'email': email} for email in cc]
         
         if bcc:
-            email_data['bcc'] = [{'email': email} for email in bcc]
+            payload['bcc'] = [{'email': email} for email in bcc]
         
         if tags:
-            email_data['tags'] = tags
+            payload['tags'] = tags
         
-        # Create send email object
-        send_email = brevo_python.SendEmail(**email_data)
+        # Set up headers with API key
+        headers = {
+            'api-key': api_key,
+            'Content-Type': 'application/json',
+        }
         
-        # Send email
-        response = api_instance.send_transac_email(send_email)
+        # Send email via Brevo API
+        response = requests.post(
+            BREVO_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=10
+        )
         
-        logger.info(f'Email sent successfully to {recipient_email}. Message ID: {response.message_id}')
-        return True
+        # Check response status
+        if response.status_code in (200, 201):
+            response_data = response.json()
+            message_id = response_data.get('messageId', 'N/A')
+            logger.info(f'Email sent successfully to {recipient_email}. Message ID: {message_id}')
+            return True
+        else:
+            error_msg = response.text
+            logger.error(f'Brevo API error {response.status_code}: {error_msg}')
+            return False
         
-    except ApiException as e:
-        logger.error(f'Brevo API error: {e.status} - {e.reason}')
+    except requests.exceptions.RequestException as e:
+        logger.error(f'Network error sending email via Brevo: {str(e)}')
         return False
     except Exception as e:
         logger.error(f'Error sending email via Brevo: {str(e)}')

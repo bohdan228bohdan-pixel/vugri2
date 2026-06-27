@@ -4,7 +4,7 @@ gid==1.0.1
 sqlparse==0.5.4
 tzdata==2025.2
 requests==2.31.0
-stripe==14.2.0   # або просто `stripe`
+stripe==14.2.0
 gunicorn
 whitenoise==6.11.0
 dj-database-url==1.2.0
@@ -12,4 +12,3 @@ psycopg2-binary==2.9.7
 python-dotenv==1.0.1
 dj-static==0.0.6
 Pillow==12.1.0
-brevo==5.12.1
