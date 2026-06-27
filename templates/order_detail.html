@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Замовлення #{{ order.id }} — VugriUkraine{% endblock %}
+
+{% block content %}
+<main style="max-width:820px;margin:36px auto;padding:16px">
+  <h1 style="color:var(--white)">Замовлення #{{ order.id }}</h1>
+  <p style="color:var(--muted)">Створено: {{ order.created_at|date:"d.m.Y H:i" }}</p>
+
+  <div style="margin-top:12px;color:var(--muted)">
+    <p><strong>Товар:</strong>
+      {% if order.product %}
+        <a href="{% url 'product_details' order.product.id %}">{{ order.product.name }}</a>
+      {% else %}
+        Товар видалено
+      {% endif %}
+    </p>
+    <p><strong>Кількість:</strong> {{ order.quantity_g }} г</p>
+    <p><strong>Сума:</strong> {{ order.total_price|floatformat:2 }} грн</p>
+    <p><strong>Статус:</strong> {{ order.status }}</p>
+
+    <p style="margin-top:16px;">
+      <a class="btn btn-outline" href="{% url 'profile' %}">Повернутися в профіль</a>
+    </p>
+  </div>
+</main>
+{% endblock %}
