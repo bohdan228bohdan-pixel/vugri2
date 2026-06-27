@@ -12,6 +12,10 @@
         <div style="background:#3b0000;color:#ffc9c9;padding:8px;border-radius:8px">{{ error }}</div>
       {% endif %}
 
+      {% if verify_message %}
+        <div style="background:#3d2f00;color:#ffe8b3;padding:8px;border-radius:8px;margin-bottom:12px">{{ verify_message }}</div>
+      {% endif %}
+
       <form method="post">
         {% csrf_token %}
         <input name="code" placeholder="Код" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:#fff;margin-bottom:12px" />

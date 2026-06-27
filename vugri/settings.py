@@ -116,19 +116,27 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email settings (configurable via environment)
-# Support both old (DJANGO_*) and new (*) variable names for compatibility
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = os.getenv("EMAIL_HOST") or os.getenv("DJANGO_EMAIL_HOST")
+EMAIL_HOST = (
+    os.getenv("EMAIL_HOST")
+    or os.getenv("DJANGO_EMAIL_HOST")
+    or "smtp.gmail.com"
+)
 EMAIL_PORT = int(os.getenv("EMAIL_PORT") or os.getenv("DJANGO_EMAIL_PORT", 587))
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER") or os.getenv("DJANGO_EMAIL_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD") or os.getenv("DJANGO_EMAIL_PASSWORD")
-EMAIL_USE_TLS = (os.getenv("EMAIL_USE_TLS") or os.getenv("DJANGO_EMAIL_USE_TLS", "True")) == "True"
-EMAIL_USE_SSL = (os.getenv("EMAIL_USE_SSL") or os.getenv("DJANGO_EMAIL_USE_SSL", "False")) == "True"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER") or os.getenv("DJANGO_EMAIL_USER") or ""
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD") or os.getenv("DJANGO_EMAIL_PASSWORD") or ""
+EMAIL_USE_TLS = (os.getenv("EMAIL_USE_TLS") or os.getenv("DJANGO_EMAIL_USE_TLS", "True")).lower() in ("1", "true", "yes")
+EMAIL_USE_SSL = (os.getenv("EMAIL_USE_SSL") or os.getenv("DJANGO_EMAIL_USE_SSL", "False")).lower() in ("1", "true", "yes")
 
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL") or os.getenv("DJANGO_DEFAULT_FROM_EMAIL") or os.getenv("DJANGO_EMAIL_USER", "noreply@vugri.com")
+DEFAULT_FROM_EMAIL = (
+    os.getenv("DEFAULT_FROM_EMAIL")
+    or os.getenv("DJANGO_DEFAULT_FROM_EMAIL")
+    or EMAIL_HOST_USER
+    or "noreply@vugri.com"
+)
 
 # Brevo (SendinBlue) configuration
-BREVO_API_KEY = os.getenv('BREVO_API_KEY', '').strip()
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
 BREVO_SENDER_EMAIL = os.getenv('BREVO_SENDER_EMAIL', DEFAULT_FROM_EMAIL)
 BREVO_SENDER_NAME = os.getenv('BREVO_SENDER_NAME', 'VugriUkraine')
 

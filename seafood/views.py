@@ -646,19 +646,16 @@ def register(request):
             code = str(random.randint(100000, 999999))
             EmailVerification.objects.update_or_create(user=user, defaults={'code': code})
 
-            # Send verification email via Brevo
-            email_sent = send_verification_email(email, code)
-            
-            if not email_sent:
-                user.delete()
-                context['register_error'] = (
-                    'Не вдалося надіслати лист підтвердження. '
-                    'Перевірте налаштування пошти та спробуйте пізніше.'
-                )
-                context['form'] = UserCreationForm()
-                return render(request, 'registration/register.html', context)
-
             request.session['verify_user_id'] = user.id
+
+            # Send verification email via Brevo/SMTP, but do not block registration if mail fails.
+            email_sent = send_verification_email(email, code)
+            if not email_sent:
+                request.session['verify_message'] = (
+                    'Акаунт створено, але лист з кодом не надійшов. '
+                    'Ви можете ввести код вручну на наступній сторінці або спробувати ще раз.'
+                )
+
             return redirect('verify_email')
 
         username = request.POST.get('username')
@@ -693,6 +690,8 @@ def verify_email(request):
     except (User.DoesNotExist, EmailVerification.DoesNotExist):
         return redirect('register')
 
+    verify_message = request.session.pop('verify_message', None)
+
     if request.method == 'POST':
         code = request.POST.get('code', '').strip()
         if verification.code == code:
@@ -702,8 +701,8 @@ def verify_email(request):
             request.session.pop('verify_user_id', None)
             auth_login(request, user)
             return redirect('profile')
-        return render(request, 'verify_email.html', {'error': 'Невірний код'})
-    return render(request, 'verify_email.html')
+        return render(request, 'verify_email.html', {'error': 'Невірний код', 'verify_message': verify_message})
+    return render(request, 'verify_email.html', {'verify_message': verify_message})
 
 
 @login_required
