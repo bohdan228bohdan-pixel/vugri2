@@ -12,3 +12,4 @@ psycopg2-binary==2.9.7
 python-dotenv==1.0.1
 dj-static==0.0.6
 Pillow==12.1.0
+brevo==5.12.1

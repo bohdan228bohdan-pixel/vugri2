@@ -20,6 +20,11 @@ from django.views.decorators.http import require_POST, require_http_methods
 from django.urls import reverse
 from django.templatetags.static import static
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from .forms import CallbackRequestForm
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from .models import Order, CallbackRequest
+from .brevo_email import send_verification_email, send_email_via_brevo, send_callback_request_notification_email, send_order_notification_email
+
 
 from django.contrib.admin.views.decorators import staff_member_required
 
@@ -641,17 +646,10 @@ def register(request):
             code = str(random.randint(100000, 999999))
             EmailVerification.objects.update_or_create(user=user, defaults={'code': code})
 
-            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None)
-
-            try:
-                send_mail(
-                    'Підтвердження email — VugriUkraine',
-                    f'Ваш код підтвердження: {code}',
-                    from_email,
-                    [email],
-                    fail_silently=False,
-                )
-            except Exception:
+            # Send verification email via Brevo
+            email_sent = send_verification_email(email, code)
+            
+            if not email_sent:
                 user.delete()
                 context['register_error'] = (
                     'Не вдалося надіслати лист підтвердження. '
@@ -755,48 +753,104 @@ def add_to_cart(request):
     if not product.in_stock:
         return JsonResponse({'ok': False, 'error': 'Товар тимчасово відсутній', 'in_stock': False}, status=400)
 
-    # client-provided metadata (fallbacks)
+    # basic metadata
     name = request.POST.get('name', product.name or 'Товар')
-    try:
-        # prefer product.price_per_100g if client didn't provide a valid price
-        client_price = request.POST.get('price', None)
-        if client_price is None or client_price == '':
-            price = int(float(product.price_per_100g or 0))
-        else:
-            price = int(float(client_price))
-    except (TypeError, ValueError):
-        price = int(float(product.price_per_100g or 0))
-
     currency = request.POST.get('currency', 'UAH')
-
-    raw_q = request.POST.get('quantity', '1')
-    try:
-        q = int(float(raw_q))
-    except (TypeError, ValueError):
-        q = 1
-
-    if q >= 10 and q % 100 == 0:
-        quantity = max(1, q // 100)
-    else:
-        quantity = max(1, q)
-
     image = request.POST.get('image', '')
 
     # get or create cart (keeps existing helper)
     cart = _get_cart(request)
 
-    # use string key for session-stored product id to be consistent
-    pid_key = str(product.id)
-    if pid_key in cart:
-        cart[pid_key]['quantity'] = int(cart[pid_key].get('quantity', 0)) + quantity
+    # If product is sold in units (шт, банка etc.) — use units logic
+    if getattr(product, 'sold_in_units', False):
+        # quantity (units) — try 'quantity' then 'quantity_units'
+        raw_qty = request.POST.get('quantity', request.POST.get('quantity_units', '1'))
+        try:
+            qty = int(float(raw_qty))
+        except (TypeError, ValueError):
+            qty = 1
+        qty = max(1, qty)
+
+        # price per unit must exist (validation), fallback to 0.00 if not
+        price_per_unit = getattr(product, 'price_per_unit', None) or Decimal('0.00')
+        if not isinstance(price_per_unit, Decimal):
+            price_per_unit = Decimal(str(price_per_unit))
+
+        total_price = (price_per_unit * Decimal(qty)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        # use unit-specific session key to avoid colliding with gram-based items
+        pid_key = f"u:{product.id}"
+        if pid_key in cart:
+            # accumulate quantity and total
+            existing = cart[pid_key]
+            existing_qty = int(existing.get('quantity', 0))
+            new_qty = existing_qty + qty
+            existing['quantity'] = new_qty
+            existing_total = Decimal(str(existing.get('total_price', '0') or '0'))
+            existing_total += (price_per_unit * Decimal(qty))
+            existing['total_price'] = str(existing_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+        else:
+            cart[pid_key] = {
+                'product_id': product.id,
+                'name': name,
+                'type': 'unit',
+                'quantity': qty,
+                'unit_label': getattr(product, 'unit_label', 'шт') or 'шт',
+                'price_per_unit': str(price_per_unit.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
+                'total_price': str(total_price),
+                'currency': currency,
+                'image': image,
+            }
+
     else:
-        cart[pid_key] = {
-            'name': name,
-            'price': price,
-            'currency': currency,
-            'quantity': quantity,
-            'image': image,
-        }
+        # Weight-based logic (backwards-compatible with previous behavior)
+        # Accept either 'quantity_g' (grams) or 'quantity' (legacy which might be grams or 100g units)
+        raw_q = request.POST.get('quantity_g', request.POST.get('quantity', '1'))
+        try:
+            q = int(float(raw_q))
+        except (TypeError, ValueError):
+            q = 1
+
+        # previous logic interpreted values >=10 and divisible by 100 as grams,
+        # then converted to number of 100g units. Preserve that behavior:
+        if q >= 10 and q % 100 == 0:
+            # treat q as grams, convert to number of 100g units
+            num_100g_units = max(1, q // 100)
+        else:
+            # treat q as already number of 100g units
+            num_100g_units = max(1, q)
+
+        # price per 100g (fallback to 0.00)
+        price_per_100g = getattr(product, 'price_per_100g', None) or Decimal('0.00')
+        if not isinstance(price_per_100g, Decimal):
+            price_per_100g = Decimal(str(price_per_100g))
+
+        # compute total: price_per_100g * number_of_100g_units
+        total_price = (price_per_100g * Decimal(num_100g_units)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        # create key includes grams info to differentiate different package sizes if needed
+        pid_key = f"g:{product.id}:{num_100g_units}"
+        if pid_key in cart:
+            existing = cart[pid_key]
+            existing_qty = int(existing.get('quantity', 0))
+            new_qty = existing_qty + num_100g_units
+            existing['quantity'] = new_qty
+            existing_total = Decimal(str(existing.get('total_price', '0') or '0'))
+            existing_total += (price_per_100g * Decimal(num_100g_units))
+            existing['total_price'] = str(existing_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+        else:
+            cart[pid_key] = {
+                'product_id': product.id,
+                'name': name,
+                'type': 'weight',
+                'quantity': num_100g_units,  # number of 100g units
+                'grams_per_unit': 100,
+                'price_per_100g': str(price_per_100g.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
+                'total_price': str(total_price),
+                'currency': currency,
+                'image': image,
+            }
+
     request.session.modified = True
 
     return JsonResponse({'ok': True, 'cart_count': cart_count(request)})
@@ -1656,7 +1710,14 @@ def submit_order(request):
 
     if recipients:
         try:
-            send_mail(subject, message_body, settings.DEFAULT_FROM_EMAIL, recipients, html_message=html_message, fail_silently=False)
+            for recipient_email in recipients:
+                send_email_via_brevo(
+                    subject=subject,
+                    recipient_email=recipient_email,
+                    html_content=html_message,
+                    text_content=message_body,
+                    tags=['order', 'admin-notification']
+                )
         except Exception:
             pass
 
@@ -1669,8 +1730,14 @@ from django.contrib.admin.views.decorators import staff_member_required
 def my_conversations(request):
     """
     Показує список розмов, в яких учасник — поточний користувач.
+    Не показує розмови, пов'язані з ордерами зі статусом 'closed'.
     """
-    qs = Conversation.objects.filter(participants=request.user).select_related('order').prefetch_related('participants').order_by('-created_at')
+    qs = (Conversation.objects
+          .filter(participants=request.user)
+          .exclude(order__status='closed')            # <-- виключаємо закриті ордери
+          .select_related('order')
+          .prefetch_related('participants')
+          .order_by('-created_at'))
     return render(request, 'conversations_list.html', {'conversations': qs, 'title': 'Мої чати'})
 
 
@@ -1678,8 +1745,13 @@ def my_conversations(request):
 def all_conversations(request):
     """
     Показує всі розмови для продавця/staff.
+    Не показує розмови з ордерами, що мають status == 'closed'.
     """
-    qs = Conversation.objects.select_related('order').prefetch_related('participants').order_by('-created_at')
+    qs = (Conversation.objects
+          .exclude(order__status='closed')            # <-- виключаємо закриті ордери
+          .select_related('order')
+          .prefetch_related('participants')
+          .order_by('-created_at'))
     return render(request, 'conversations_list.html', {'conversations': qs, 'title': 'Всі чати (для продавця)'})
 
 @staff_member_required
@@ -1933,3 +2005,56 @@ def debug_session_cart(request):
         'cart': request.session.get('cart'),
         'full': data
     }, json_dumps_params={'ensure_ascii': False})
+
+@require_POST
+@csrf_protect
+def request_callback(request):
+    form = CallbackRequestForm(request.POST)
+    if form.is_valid():
+        cb = form.save()
+        # опціонально: відправити email адміну
+        try:
+            admin_email = getattr(settings, 'ADMIN_EMAIL', None)
+            if admin_email:
+                send_callback_request_notification_email(
+                    admin_email=admin_email,
+                    callback_id=cb.pk,
+                    caller_name=cb.name,
+                    caller_phone=cb.phone,
+                    product_name=str(cb.product) if cb.product else '',
+                    preferred_time=cb.preferred_time or '',
+                    message=cb.message
+                )
+        except Exception:
+            # не впаде при помилці відправки пошти
+            pass
+        return JsonResponse({'ok': True, 'message': 'Дякуємо! Ми вам зателефонуємо.'})
+    else:
+        # повертаємо помилки в JSON
+        return JsonResponse({'ok': False, 'errors': form.errors}, status=400)
+
+
+@login_required
+def callback_requests(request):
+    # Доступ лише для головного акаунта або суперюзера
+    if not (request.user.username == 'VugriUa' or request.user.is_superuser):
+        return HttpResponseForbidden("Недостатньо прав")
+
+    qs = CallbackRequest.objects.select_related('product').order_by('-created_at')
+    return render(request, 'callbacks_list.html', {'callbacks': qs})
+
+@require_POST
+@login_required
+def toggle_callback_processed(request, pk):
+    if not (request.user.username == 'VugriUa' or request.user.is_superuser):
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'error': 'forbidden'}, status=403)
+        return HttpResponseForbidden("Недостатньо прав")
+
+    cb = get_object_or_404(CallbackRequest, pk=pk)
+    cb.processed = not cb.processed
+    cb.save()
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'processed': cb.processed})
+    return redirect('callback_requests')

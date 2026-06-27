@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Запити зворотного зв'язку — VugriUkraine{% endblock %}
+
+{% block content %}
+<main style="max-width:980px;margin:36px auto;padding:16px;">
+  <h1 style="color:var(--white);margin-bottom:12px">Запити зворотного зв'язку</h1>
+
+  <p style="color:var(--muted);margin-bottom:18px">Тут відображені всі запити, надіслані користувачами через форму «Замовити зворотній зв'язок».</p>
+
+  {% if callbacks %}
+    <table style="width:100%;border-collapse:collapse">
+      <thead style="text-align:left;color:var(--muted);font-size:14px">
+        <tr>
+          <th style="padding:8px 6px">#</th>
+          <th style="padding:8px 6px">Телефон</th>
+          <th style="padding:8px 6px">Ім'я</th>
+          <th style="padding:8px 6px">Продукт</th>
+          <th style="padding:8px 6px">Повідомлення</th>
+          <th style="padding:8px 6px">Час</th>
+          <th style="padding:8px 6px">Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cb in callbacks %}
+          <tr style="border-top:1px solid rgba(255,255,255,0.03);">
+            <td style="padding:10px 6px;vertical-align:top">{{ cb.pk }}</td>
+            <td style="padding:10px 6px;vertical-align:top">
+              <a href="tel:{{ cb.phone }}" style="color:var(--accent);font-weight:700">{{ cb.phone }}</a>
+            </td>
+            <td style="padding:10px 6px;vertical-align:top">{{ cb.name|default:"—" }}</td>
+            <td style="padding:10px 6px;vertical-align:top">
+              {% if cb.product %}<a href="{% url 'product_details' cb.product.id %}">{{ cb.product.name }}</a>{% else %}—{% endif %}
+            </td>
+            <td style="padding:10px 6px;vertical-align:top;max-width:320px;white-space:pre-wrap;color:var(--muted)">{{ cb.message|default:"—" }}</td>
+            <td style="padding:10px 6px;vertical-align:top;color:var(--muted)">{{ cb.created_at }}</td>
+            <td style="padding:10px 6px;vertical-align:top">
+              <button class="btn-toggle-processed btn btn-outline" data-id="{{ cb.pk }}" style="padding:8px 10px;border-radius:8px">
+                {% if cb.processed %}Відмічено{% else %}Позначити як опрацьовано{% endif %}
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div style="color:var(--muted)">Немає запитів.</div>
+  {% endif %}
+</main>
+
+<script>
+(function(){
+  const csrftoken = document.querySelector('input[name=csrfmiddlewaretoken]') ? document.querySelector('input[name=csrfmiddlewaretoken]').value : null;
+  document.querySelectorAll('.btn-toggle-processed').forEach(btn=>{
+    btn.addEventListener('click', async function(){
+      const pk = this.dataset.id;
+      this.disabled = true;
+      try {
+        const res = await fetch("{% url 'toggle_callback_processed' 0 %}".replace('/0/','/' + pk + '/'), {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrftoken
+          },
+          credentials: 'same-origin'
+        });
+        const json = await res.json().catch(()=>null);
+        if (res.ok && json && json.ok){
+          // оновити текст кнопки
+          this.textContent = json.processed ? 'Відмічено' : 'Позначити як опрацьовано';
+        } else {
+          alert('Не вдалось змінити статус');
+        }
+      } catch(e){
+        console.error(e);
+        alert('Помилка мережі');
+      } finally {
+        this.disabled = false;
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

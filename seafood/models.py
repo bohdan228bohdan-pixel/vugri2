@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from django.utils.text import slugify
+from django.core.exceptions import ValidationError
 
 
 class Category(models.Model):
@@ -69,6 +70,20 @@ class SeafoodProduct(models.Model):
         help_text="Якщо встановлено, товар продається упаковками цього розміру (в грамах), наприклад 500"
     )
 
+    # Нове: продавати в штуках/одиницях (банка, упаковка тощо)
+    sold_in_units = models.BooleanField(
+        default=False,
+        help_text="Позначте, якщо товар продається в одиницях (шт/банка) замість грами/пакету"
+    )
+    price_per_unit = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Ціна за 1 одиницю (вказуйте, якщо sold_in_units=True)"
+    )
+    unit_label = models.CharField(
+        max_length=30, default='шт', blank=True,
+        help_text="Напис у шаблоні для одиниці (наприклад 'шт', 'банка')"
+    )
+
     class Meta:
         verbose_name = "Продукт"
         verbose_name_plural = "Продукти"
@@ -113,6 +128,16 @@ class SeafoodProduct(models.Model):
     def package_price_display(self):
         p = self.compute_package_price()
         return "{:.2f}".format(p) if p is not None else None
+
+    def clean(self):
+        """
+        Model-level validation:
+        - якщо sold_in_units=True, price_per_unit має бути задано.
+        - (додатково) можна очистити або попереджувати про package_size_grams.
+        """
+        from django.core.exceptions import ValidationError
+        if self.sold_in_units and not self.price_per_unit:
+            raise ValidationError("Якщо товар продається в одиницях, вкажіть price_per_unit.")
 
 class EmailVerification(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -286,3 +311,30 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message #{self.id} by {self.sender}"
+
+
+class CallbackRequest(models.Model):
+    """
+    Model for storing callback requests from customers.
+    """
+    name = models.CharField(max_length=150)
+    phone = models.CharField(max_length=20)
+    product = models.ForeignKey(
+        SeafoodProduct,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='callback_requests'
+    )
+    preferred_time = models.CharField(max_length=100, blank=True)
+    message = models.TextField(blank=True)
+    processed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Запит зворотного зв\'язку'
+        verbose_name_plural = 'Запити зворотного зв\'язку'
+
+    def __str__(self):
+        return f'Callback Request #{self.id} — {self.name} ({self.phone})'

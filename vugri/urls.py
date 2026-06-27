@@ -1,19 +1,19 @@
-# E:\soft\vugri\vugri\urls.py
 from django.contrib import admin
-from django.urls import path, reverse_lazy
+from django.urls import include, re_path, path, reverse_lazy
 from django.contrib.auth import views as auth_views
+from django.views.static import serve
 
 from seafood import views as seafood_views
 
 from django.conf import settings
 from django.conf.urls.static import static
+import os
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("", seafood_views.homepage, name="homepage"),
 
     # Site / products
-    path('', seafood_views.homepage, name='homepage'),
     path('products/', seafood_views.products, name='products'),
     path('product/<int:product_id>/', seafood_views.product_details, name='product_details'),
     path('product/<int:product_id>/review/', seafood_views.submit_review, name='submit_review'),
@@ -55,7 +55,7 @@ urlpatterns = [
     # Favorites
     path('favorites/', seafood_views.favorites_view, name='favorites'),
     path('favorites/toggle/', seafood_views.toggle_favorite, name='toggle_favorite'),
-    path('products/', seafood_views.products_list, name='products_list'),
+    path('products/list/', seafood_views.products_list, name='products_list'),
     path('order/complete/<int:order_id>/', seafood_views.order_complete, name='order_complete'),
 
     # Chat / conversations
@@ -68,7 +68,7 @@ urlpatterns = [
     path('conversations/archived/', seafood_views.archived_conversations, name='archived_conversations'),
     path('review/<int:review_id>/delete/', seafood_views.delete_review, name='delete_review'),
     path('debug/session-cart/', seafood_views.debug_session_cart, name='debug_session_cart'),
-
+    path('request-callback/', seafood_views.request_callback, name='request_callback'),
 ]
 
 # Password change (user must be logged in)
@@ -126,6 +126,12 @@ urlpatterns += [
     ),
 ]
 
-# Serve media files in development (only when DEBUG=True)
-if settings.DEBUG:
+# TEMPORARY: serve media only when explicitly enabled or in DEBUG
+# NOTE: do NOT rely on Django to serve media in production long-term.
+# Enable with env var SERVE_MEDIA=1 (or use DEBUG=True for local development).
+if os.environ.get('SERVE_MEDIA', '').lower() in ('1', 'true', 'yes'):
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]
+elif settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

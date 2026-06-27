@@ -119,6 +119,40 @@
   #product-title { font-size:20px; }
   .price { font-size:22px; }
 }
+.callback-modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px; }
+.callback-modal-inner { background:var(--panel-bg); color:var(--white); padding:18px; border-radius:10px; width:100%; max-width:560px; box-shadow:0 14px 50px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.04); }
+.callback-modal h3 { margin:0 0 10px; color:var(--fg); }
+
+/* Поля */
+.callback-modal .field { margin-top:10px; }
+.callback-modal input[type="text"], .callback-modal input[type="tel"], .callback-modal textarea {
+  width:100%;
+  padding:10px;
+  margin-top:6px;
+  border-radius:8px;
+  background: rgba(255,255,255,0.02);
+  color:var(--white);
+  border:1px solid rgba(255,255,255,0.04);
+  outline: none;
+  box-sizing: border-box;
+}
+.callback-modal input::placeholder, .callback-modal textarea::placeholder { color: rgba(255,255,255,0.35); }
+
+/* Кнопки */
+.btn { display:inline-flex; align-items:center; gap:8px; justify-content:center; padding:10px 14px; border-radius:8px; font-weight:800; cursor:pointer; text-decoration:none; }
+.btn-primary { background: linear-gradient(90deg,var(--accent),var(--accent-dark)); color:#fff; border:0; }
+.btn-outline { background:transparent; color:var(--white); border:1px solid rgba(255,255,255,0.06); }
+.btn-call { background: linear-gradient(90deg,var(--accent), #cc4a20); color:#fff; border:0; padding:10px 14px; }
+
+/* Результат */
+.cb-result { font-size:0.95rem; color:var(--muted); }
+
+/* Responsive */
+@media (max-width:640px){
+  .callback-modal-inner{ padding:14px; max-width:92%; }
+  .cb-actions { flex-wrap:wrap; }
+  .btn-call { width:100%; order:3; margin-left:0; }
+}
 </style>
 {% endblock %}
 
@@ -189,30 +223,45 @@
 
           <div class="product-meta">{{ product.description }}</div>
 
+<!-- НОВИЙ БЛОК: підтримка продажу в штуках або в грамах -->
 <div class="price">
-  {% comment %}
-    Якщо view передав package_price (рядок, наприклад "2800.00") — показуємо його як ціну за один екземпляр (1 шт).
-    Інакше — показуємо стандартну ціну за 100г.
-  {% endcomment %}
-
-  {% if package_price %}
-    <strong style="font-size:28px;color:#fff">{{ package_price }} грн</strong>
-    <span style="color:var(--muted)"> / 1 шт</span>
+  {% if product.sold_in_units %}
+    {% if product.price_per_unit %}
+      <strong>{{ product.price_per_unit|floatformat:2 }} грн / 1 {{ product.unit_label|default:"шт" }}</strong>
+    {% else %}
+      <span>Ціна уточнюється</span>
+    {% endif %}
+  {% elif package_price %}
+    {# Для сторінки товару view може передавати package_price/package_size або атрибути product.package_size_grams #}
+    {% if package_size %}
+      <strong>{{ package_price }} грн / {{ package_size }} г</strong>
+    {% elif product.package_size_grams %}
+      <strong>{{ product.compute_package_price|default:product.package_price_display }} грн / {{ product.package_size_grams }} г</strong>
+    {% elif product.package_size %}
+      <strong>{{ product.package_price_display }} грн / {{ product.package_size }} г</strong>
+    {% else %}
+      <strong>1 шт — {{ package_price|default:product.package_price_display }}</strong>
+    {% endif %}
   {% else %}
     {% if product.price_per_100g %}
-      <strong style="font-size:28px;color:#fff">{{ product.price_per_100g|floatformat:2 }} грн</strong>
-      <span style="color:var(--muted)"> / 100г</span>
+      <strong>{{ product.price_per_100g|floatformat:2 }} грн / 100г</strong>
     {% else %}
-      <span style="color:var(--muted)">Ціна уточнюється</span>
+      <span>Ціна уточнюється</span>
     {% endif %}
   {% endif %}
 </div>
+
+<!-- КІНЕЦЬ НОВОГО БЛОКУ -->
 
           <div class="controls-row" role="group" aria-label="Дії з товаром">
             <div style="display:flex;align-items:center;gap:8px">
               <button id="qty-decr" class="btn-outline" type="button" aria-label="зменшити">−</button>
               <input id="qty" class="qty-input" type="number" value="1" min="1" step="1" aria-label="кількість" />
               <button id="qty-incr" class="btn-outline" type="button" aria-label="збільшити">+</button>
+              <button id="requestCallbackBtn" class="btn btn-outline"
+        data-product-id="{{ product.id }}" data-product-name="{{ product.name }}">
+  Замовити зворотній зв'язок
+              </button>
             </div>
 
             <div style="display:flex;gap:10px;align-items:center">
@@ -655,5 +704,115 @@ if (addBtn) {
             }
           });
         });
+</script>
+
+
+<div id="callbackModal" class="callback-modal" style="display:none;">
+  <div class="callback-modal-inner" role="dialog" aria-modal="true" aria-labelledby="cbTitle">
+    <h3 id="cbTitle">Замовити зворотній зв'язок</h3>
+    <form id="callbackForm" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="product" id="cb_product" value="{{ product.id }}">
+      <div>
+        <label>Телефон *</label>
+        <input type="text" name="phone" id="cb_phone" placeholder="+380XXXXXXXXX" required>
+      </div>
+      <div>
+        <label>Ім'я</label>
+        <input type="text" name="name" id="cb_name" placeholder="Ваше ім'я (необов'язково)">
+      </div>
+      <div>
+        <label>Зручний час</label>
+        <input type="text" name="preferred_time" id="cb_time" placeholder="Наприклад: завтра після 18:00">
+      </div>
+      <div>
+        <label>Повідомлення</label>
+        <textarea name="message" id="cb_message" rows="3" placeholder="Коротко опишіть запит"></textarea>
+      </div>
+
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+        <button type="submit" class="btn btn-primary" id="cbSendBtn">Надіслати</button>
+        <button type="button" class="btn btn-outline" id="cbCancel">Скасувати</button>
+        <a href="tel:+380986666466" class="btn btn-outline" style="margin-left:auto">Подзвонити</a>
+      </div>
+
+      <div id="cbResult" style="margin-top:10px;display:none;"></div>
+    </form>
+  </div>
+</div>
+
+<style>
+.callback-modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px; }
+.callback-modal-inner { background:#fff; color:#111; padding:18px; border-radius:8px; width:100%; max-width:540px; box-shadow:0 10px 40px rgba(0,0,0,0.4); }
+.callback-modal input, .callback-modal textarea { width:100%; padding:8px; margin-top:6px; border:1px solid #ddd; border-radius:6px; }
+</style>
+
+<script>
+(function(){
+  const openBtn = document.getElementById('requestCallbackBtn');
+  const modal = document.getElementById('callbackModal');
+  const cancelBtn = document.getElementById('cbCancel');
+  const form = document.getElementById('callbackForm');
+  const resultBox = document.getElementById('cbResult');
+  const sendBtn = document.getElementById('cbSendBtn');
+
+  if (!openBtn || !modal || !form) return;
+
+  function openModal(productId){
+    const hid = modal.querySelector('#cb_product');
+    if (hid && productId) hid.value = productId;
+    resultBox.style.display = 'none';
+    modal.style.display = 'flex';
+  }
+  function closeModal(){ modal.style.display = 'none'; }
+
+  openBtn.addEventListener('click', function(e){
+    e.preventDefault();
+    openModal(this.dataset.productId || '{{ product.id }}');
+  });
+  cancelBtn.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
+
+  function getCsrfToken(){
+    const el = form.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+  }
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    sendBtn.disabled = true;
+    resultBox.style.display = 'none';
+    const data = new FormData(form);
+
+    fetch("{% url 'request_callback' %}", {
+      method: "POST",
+      headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
+      body: data,
+      credentials: 'same-origin'
+    }).then(async res => {
+      const json = await res.json().catch(()=>null);
+      if (res.ok && json && json.ok){
+        resultBox.style.color = 'green';
+        resultBox.textContent = json.message || 'Дякуємо! Ми зателефонуємо.';
+        resultBox.style.display = 'block';
+        form.reset();
+        setTimeout(closeModal, 1700);
+      } else {
+        resultBox.style.color = 'red';
+        resultBox.textContent = (json && (json.error || JSON.stringify(json.errors))) || 'Помилка відправки';
+        resultBox.style.display = 'block';
+      }
+    }).catch(err=>{
+      resultBox.style.color = 'red';
+      resultBox.textContent = 'Помилка мережі. Спробуйте пізніше.';
+      resultBox.style.display = 'block';
+      console.error(err);
+    }).finally(()=>{ sendBtn.disabled = false; });
+  });
+
+  // close when clicking outside dialog
+  modal.addEventListener('click', function(e){
+    if (e.target === modal) closeModal();
+  });
+})();
 </script>
 {% endblock %}
