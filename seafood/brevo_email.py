@@ -1,10 +1,11 @@
 """
 Brevo (SendinBlue) email integration utility module.
 Provides functions to send emails via Brevo Transactional Email API.
-No SDK dependency - uses requests library directly.
+Falls back to Django send_mail if Brevo is not configured or fails.
 """
 
 from django.conf import settings
+from django.core.mail import send_mail as django_send_mail
 import logging
 import json
 import requests
@@ -31,6 +32,7 @@ def send_email_via_brevo(
 ) -> bool:
     """
     Send an email via Brevo Transactional Email API using requests.
+    Falls back to Django send_mail if Brevo fails.
     
     Args:
         subject: Email subject
@@ -49,17 +51,17 @@ def send_email_via_brevo(
         True if email was sent successfully, False otherwise
     """
     
-    api_key = getattr(settings, 'BREVO_API_KEY', '')
+    api_key = getattr(settings, 'BREVO_API_KEY', '').strip()
     if not api_key:
-        logger.error('Brevo API key is not configured')
-        return False
+        logger.warning('Brevo API key is not configured. Falling back to Django send_mail.')
+        return _fallback_send_email(subject, recipient_email, html_content, text_content, sender_email)
     
     sender_email = sender_email or getattr(settings, 'BREVO_SENDER_EMAIL', '')
     sender_name = sender_name or getattr(settings, 'BREVO_SENDER_NAME', 'VugriUkraine')
     
     if not sender_email:
-        logger.error('Brevo sender email is not configured')
-        return False
+        logger.warning('Brevo sender email is not configured. Falling back to Django send_mail.')
+        return _fallback_send_email(subject, recipient_email, html_content, text_content)
     
     if not html_content and not text_content:
         logger.error('Either html_content or text_content must be provided')
@@ -122,18 +124,47 @@ def send_email_via_brevo(
         if response.status_code in (200, 201):
             response_data = response.json()
             message_id = response_data.get('messageId', 'N/A')
-            logger.info(f'Email sent successfully to {recipient_email}. Message ID: {message_id}')
+            logger.info(f'Email sent via Brevo to {recipient_email}. Message ID: {message_id}')
             return True
         else:
             error_msg = response.text
-            logger.error(f'Brevo API error {response.status_code}: {error_msg}')
-            return False
+            logger.warning(f'Brevo API error {response.status_code}: {error_msg}. Falling back to Django send_mail.')
+            return _fallback_send_email(subject, recipient_email, html_content, text_content, sender_email)
         
     except requests.exceptions.RequestException as e:
-        logger.error(f'Network error sending email via Brevo: {str(e)}')
-        return False
+        logger.warning(f'Network error sending email via Brevo: {str(e)}. Falling back to Django send_mail.')
+        return _fallback_send_email(subject, recipient_email, html_content, text_content, sender_email)
     except Exception as e:
-        logger.error(f'Error sending email via Brevo: {str(e)}')
+        logger.warning(f'Error sending email via Brevo: {str(e)}. Falling back to Django send_mail.')
+        return _fallback_send_email(subject, recipient_email, html_content, text_content, sender_email)
+
+
+def _fallback_send_email(
+    subject: str,
+    recipient_email: str,
+    html_content: Optional[str] = None,
+    text_content: Optional[str] = None,
+    sender_email: Optional[str] = None,
+) -> bool:
+    """
+    Fallback to Django send_mail if Brevo fails or is not configured.
+    """
+    try:
+        from_email = sender_email or getattr(settings, 'DEFAULT_FROM_EMAIL', '')
+        message = text_content or html_content or ''
+        
+        django_send_mail(
+            subject=subject,
+            message=message,
+            from_email=from_email,
+            recipient_list=[recipient_email],
+            html_message=html_content,
+            fail_silently=False,
+        )
+        logger.info(f'Email sent via Django mail to {recipient_email}')
+        return True
+    except Exception as e:
+        logger.error(f'Error sending email via Django mail: {str(e)}')
         return False
 
 
